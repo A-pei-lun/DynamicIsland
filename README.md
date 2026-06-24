@@ -1,3 +1,11 @@
+<div align="center">
+
+[🇨🇳 中文](README.md) | [🇺🇸 English](README.en.md)
+
+</div>
+
+---
+
 # DynamicIsland 🏝️
 
 Windows 上的灵动岛 —— 屏幕顶部居中的浮动胶囊，集成系统状态、媒体控制、瞬时提醒。
