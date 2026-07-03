@@ -115,5 +115,15 @@
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
         </ScrollViewer>
+
+        <!-- 空状态：常驻页历史为空时给个提示，免得翻到空白页莫名其妙 -->
+        <TextBlock x:Name="EmptyHint"
+                   Grid.Row="1"
+                   Text="📭 暂无通知"
+                   FontSize="13"
+                   Opacity="0.45"
+                   HorizontalAlignment="Center"
+                   VerticalAlignment="Center"
+                   Visibility="Collapsed"/>
     </Grid>
 </UserControl>

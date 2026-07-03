@@ -176,5 +176,28 @@
                         Command="{Binding ToggleShuffleCommand}"/>
             </StackPanel>
         </Grid>
+
+        <!-- 空状态：无媒体会话时盖住封面空方块和无效控制按钮，居中显示占位。
+             HasMedia=false 显示，true 时 Collapsed 不挡内容。 -->
+        <Border Grid.RowSpan="2"
+                Background="#BF1A1A1A"
+                HorizontalAlignment="Stretch"
+                VerticalAlignment="Stretch">
+            <Border.Style>
+                <Style TargetType="Border">
+                    <Setter Property="Visibility" Value="Collapsed"/>
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding HasMedia}" Value="False">
+                            <Setter Property="Visibility" Value="Visible"/>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Border.Style>
+            <TextBlock Text="🎵 暂无媒体播放"
+                       FontSize="13"
+                       Opacity="0.5"
+                       HorizontalAlignment="Center"
+                       VerticalAlignment="Center"/>
+        </Border>
     </Grid>
 </UserControl>

@@ -70,6 +70,9 @@ namespace DynamicIsland.Alerts
             // 防止重要通知（低电量 80 等）被后续低优先级通知挤到列表下方看不到。
             _entries = _host.History.OrderByDescending(e => e.Alert.Priority).ToList();
             List.ItemsSource = _entries;
+
+            // 常驻页：空列表时显示占位提示，非空时隐藏
+            EmptyHint.Visibility = _entries.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         }
 
         /// <summary>遍历当前列表条目，按各条 Time 重算相对时间文案。</summary>

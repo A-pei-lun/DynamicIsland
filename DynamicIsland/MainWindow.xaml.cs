@@ -22,8 +22,8 @@ namespace DynamicIsland
         private const double CollapsedHeight = 40;
         private const double HoverWidth = 228;
         private const double HoverHeight = 48;
-        private const double ExpandedWidth = 460;
-        private const double ExpandedHeight = 160;
+        private const double ExpandedWidth = 720;
+        private const double ExpandedHeight = 240;
         private const double ScreenWidthFraction = 2.0 / 5.0;
         private const double AlertWidth = 420;
         private const double AlertHeight = 40;

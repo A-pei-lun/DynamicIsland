@@ -1,5 +1,3 @@
-using System;
-using System.ComponentModel;
 using System.Windows;
 using DynamicIsland.Island;
 
@@ -7,32 +5,31 @@ namespace DynamicIsland.Sources
 {
     /// <summary>
     /// 媒体控制页：复用 <see cref="MediaExpandedView"/>，DataContext 绑到 <see cref="MediaSource"/>。
-    /// 播放/暂停只要有会话就可用（<see cref="MediaSource.HasMedia"/>），暂停时仍能在此页继续播放。
+    /// **常驻可用**——无媒体会话时由 MediaExpandedView 内的空状态层显示"🎵 暂无媒体播放"占位，
+    /// 不再随 HasMedia 隐藏整页，翻页时页数稳定。
+    ///
+    /// Order=10，排第一页。
     /// </summary>
     public sealed class MediaPanel : IIslandPanel
     {
-        private readonly MediaSource _media;
         private readonly MediaExpandedView _view;
 
         public MediaPanel(MediaSource media)
         {
-            _media = media;
             _view = new MediaExpandedView { DataContext = media };
-            // HasMedia 是 INPC 属性，变化时通知 dashboard 重算可用页
-            _media.PropertyChanged += OnMediaPropertyChanged;
         }
 
         public string Id => "media";
         public int Order => 10;
-        public bool IsAvailable => _media.HasMedia;
+
+        // 常驻：无媒体会话时显示占位，不隐藏整页
+        public bool IsAvailable => true;
+
         public FrameworkElement View => _view;
 
+        // 常驻页，永不失效，无可用性变化事件
+#pragma warning disable CS0067 // 事件未使用（接口要求）
         public event EventHandler? AvailabilityChanged;
-
-        private void OnMediaPropertyChanged(object? sender, PropertyChangedEventArgs e)
-        {
-            if (e.PropertyName == nameof(MediaSource.HasMedia))
-                AvailabilityChanged?.Invoke(this, EventArgs.Empty);
-        }
+#pragma warning restore CS0067
     }
 }
