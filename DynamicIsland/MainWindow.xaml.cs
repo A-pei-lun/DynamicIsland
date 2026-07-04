@@ -81,6 +81,9 @@ namespace DynamicIsland
         // ─── 目标显示器 ────────────────────────────────────────────
         private MonitorInfo _targetMonitor = null!;
 
+        // ─── 液态玻璃自渲染器（beta；仅 LiquidGlass 模式启停）──
+        private LiquidGlassRenderer? _glass;
+
         // ─── Win32 API ─────────────────────────────────────────────
         [DllImport("user32.dll")]
         private static extern int SetWindowLong(IntPtr hwnd, int index, int style);
@@ -110,6 +113,7 @@ namespace DynamicIsland
         public MainWindow()
         {
             InitializeComponent();
+            _glass = new LiquidGlassRenderer(this, GlassCapture, GlassTint);
 
             _host = new IslandHost();
             _host.Register(_media = new MediaSource());
@@ -204,6 +208,7 @@ namespace DynamicIsland
             _tray.Dispose();
             _shrinkTimer.Stop();
             _shrinkTimer.Tick -= OnShrinkTick;
+            _glass?.Stop();
         }
 
         private void OnDeactivated(object? sender, EventArgs e)
@@ -241,17 +246,46 @@ namespace DynamicIsland
             var hwnd = new WindowInteropHelper(this).Handle;
             if (hwnd == IntPtr.Zero) return;
             // 主题 + 模糊均来自设置：System 主题读注册表；Acrylic 模糊开关 + 底色浓度(见 WindowBackdrop)
+            var mode = DisplaySettings.Instance.BackdropMode;
             bool isLight = DisplaySettings.Instance.IsLight();
-            WindowBackdrop.Apply(hwnd, DisplaySettings.Instance.BackdropMode,
+            WindowBackdrop.Apply(hwnd, mode,
                 isDark: !isLight,
                 blurEnabled: DisplaySettings.Instance.BlurEnabled,
                 tintIntensity: DisplaySettings.Instance.BlurIntensity);
 
-            // Mica：DWM 在 borderless 窗口上渲染纯黑（WindowBackdrop 内已不挂 backdrop），
-            // 由 GlassBorder 平涂实色兜底，兑现"云母平涂暗色"。Acrylic/Transparent 仍透明，让 accent 透出。
-            GlassBorder.Background = DisplaySettings.Instance.BackdropMode == BackdropMode.Mica
-                ? new SolidColorBrush(isLight ? Color.FromRgb(0xE8, 0xE8, 0xE8) : Color.FromRgb(0x1A, 0x1A, 0x1A))
-                : Brushes.Transparent;
+            // Mica：DWM 在 borderless 窗口上渲染纯黑（WindowBackdrop 内已不挂 backdrop），由 GlassBorder 平涂实色兜底。
+            // LiquidGlass：基座已 state2 透穿，GlassBorder 透明让自渲染层显出，启渲染器（LiquidGlassRenderer 抓身后桌面+模糊）。
+            // Acrylic/Transparent：GlassBorder 透明让 accent 透出。
+            if (mode == BackdropMode.Mica)
+            {
+                _glass?.Stop();
+                GlassBorder.Background = new SolidColorBrush(isLight ? Color.FromRgb(0xE8, 0xE8, 0xE8) : Color.FromRgb(0x1A, 0x1A, 0x1A));
+            }
+            else if (mode == BackdropMode.LiquidGlass)
+            {
+                GlassBorder.Background = Brushes.Transparent;
+                _glass?.Start(hwnd);
+            }
+            else
+            {
+                _glass?.Stop();
+                GlassBorder.Background = Brushes.Transparent;
+            }
+
+            ApplyGlassEdge();
+        }
+
+        /// <summary>
+        /// 液态玻璃金边显隐：仅 LiquidGlass 模式且 GlassEdgeEnabled=关 时藏顶/底高光 + 去边框；
+        /// 其余情况恢复可见 + 主题化悬停边框。由 ApplyBackdrop 末尾调（ApplySystemTheme 经其末尾的 ApplyBackdrop 间接触发）。
+        /// </summary>
+        private void ApplyGlassEdge()
+        {
+            bool isLiquid = DisplaySettings.Instance.BackdropMode == BackdropMode.LiquidGlass;
+            bool showEdge = !isLiquid || DisplaySettings.Instance.GlassEdgeEnabled;
+            TopHighlight.Visibility = showEdge ? Visibility.Visible : Visibility.Collapsed;
+            BottomHighlight.Visibility = showEdge ? Visibility.Visible : Visibility.Collapsed;
+            GlassBorder.BorderBrush = (isLiquid && !DisplaySettings.Instance.GlassEdgeEnabled) ? null : _hoverBorderBrush;
         }
 
         // ─── 主题 ──────────────────────────────────────────────────
@@ -277,7 +311,7 @@ namespace DynamicIsland
             var borderColor = isLight ? _lightBorder : _darkBorder;
             _hoverBorderBrush.Color = Color.FromArgb(255, borderColor.R, borderColor.G, borderColor.B);
             _hoverBorderBrush.Opacity = 0.2;
-            GlassBorder.BorderBrush = _hoverBorderBrush;
+            // GlassBorder.BorderBrush 由 ApplyGlassEdge（经 ApplyBackdrop 末尾）按模式/金边开关统一设定，不在此直接赋。
 
             var textBrush = new SolidColorBrush(text);
             StatusText.Foreground = textBrush;
@@ -725,6 +759,18 @@ namespace DynamicIsland
             {
                 // 全屏抑制开关变了：立即重算（用户在全屏中关闭开关时，应即时让岛重现）
                 Dispatcher.Invoke(UpdateFullScreenSuppression);
+            }
+            else if (e.PropertyName == nameof(DisplaySettings.GlassBlurRadius)
+                  || e.PropertyName == nameof(DisplaySettings.GlassTintIntensity)
+                  || e.PropertyName == nameof(DisplaySettings.GlassCaptureFps))
+            {
+                // 液态玻璃参数变：即时刷新渲染器（半径/底色/帧率）
+                Dispatcher.Invoke(() => _glass?.UpdateSettings());
+            }
+            else if (e.PropertyName == nameof(DisplaySettings.GlassEdgeEnabled))
+            {
+                // 金边开关变：重算高光/边框显隐
+                Dispatcher.Invoke(ApplyGlassEdge);
             }
         }
 

@@ -36,6 +36,16 @@
             Background="#BF1A1A1A"
             BorderBrush="#33FFFFFF">
         <Grid x:Name="RootGrid">
+            <!-- 液态玻璃自渲染层（仅 LiquidGlass 模式显示，由 LiquidGlassRenderer 驱动）：
+                 GlassCapture=抓到的"窗后桌面"+可调半径高斯模糊；GlassTint=底色叠层。
+                 放最底层，GlassBorder 圆角裁剪到胶囊形。 -->
+            <Image x:Name="GlassCapture" Stretch="Fill" Visibility="Collapsed">
+                <Image.Effect>
+                    <BlurEffect x:Name="GlassBlur" Radius="22"/>
+                </Image.Effect>
+            </Image>
+            <Border x:Name="GlassTint" Background="Transparent" Visibility="Collapsed"/>
+
             <!-- 顶部高光（初始 Opacity 由 code-behind 的 HighlightBaseOpacity 设定，hover 时增亮） -->
             <Border x:Name="TopHighlight"
                     Height="16"

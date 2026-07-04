@@ -35,6 +35,8 @@ namespace DynamicIsland
             PopulateThemeCombo();
             // 主题画刷按当前设置落色（XAML 默认深色，运行时按 IsLight 覆写）
             ApplyTheme();
+            // 按当前材质模式切液态玻璃卡片显隐 + Acrylic 两行启用态
+            UpdateGlassControlsVisibility();
             DisplaySettings.Instance.PropertyChanged += OnSettingsChanged;
             SystemEvents.DisplaySettingsChanged += OnDisplayTopologyChanged;
             // 系统主题变了（且 ThemeMode=System）要重刷画刷
@@ -133,6 +135,7 @@ namespace DynamicIsland
                 BackdropCombo.Items.Add("亚克力（模糊）");
                 BackdropCombo.Items.Add("全透明");
                 BackdropCombo.Items.Add("云母（平涂）");
+                BackdropCombo.Items.Add("液态玻璃（beta）");
                 int idx = (int)DisplaySettings.Instance.BackdropMode;
                 if (idx < 0 || idx >= BackdropCombo.Items.Count) idx = 0;
                 BackdropCombo.SelectedIndex = idx;
@@ -146,6 +149,21 @@ namespace DynamicIsland
             int idx = BackdropCombo.SelectedIndex;
             if (idx < 0) return;
             DisplaySettings.Instance.BackdropMode = (BackdropMode)idx;
+            UpdateGlassControlsVisibility();
+        }
+
+        /// <summary>
+        /// 按当前材质模式切液态玻璃卡片显隐 + Acrylic 模糊/底色两行启用态。
+        /// 液态玻璃卡片仅 LiquidGlass 模式显示；Acrylic 的模糊/底色浓度仅亚克力生效，非亚克力置灰避免误用。
+        /// 在 ctor 末尾、BackdropCombo 改选、OnSettingsChanged(BackdropMode) 各调一次。
+        /// </summary>
+        private void UpdateGlassControlsVisibility()
+        {
+            var mode = DisplaySettings.Instance.BackdropMode;
+            GlassCard.Visibility = mode == BackdropMode.LiquidGlass ? Visibility.Visible : Visibility.Collapsed;
+            bool isAcrylic = mode == BackdropMode.Acrylic;
+            BlurToggle.IsEnabled = isAcrylic;
+            BlurSlider.IsEnabled = isAcrylic;
         }
 
         // ─── 外观：主题 ──────────────────────────────────────────
@@ -203,6 +221,7 @@ namespace DynamicIsland
                         try { BackdropCombo.SelectedIndex = idx; }
                         finally { _suppressBackdropComboEvent = false; }
                     }
+                    UpdateGlassControlsVisibility();
                 });
             }
             else if (e.PropertyName == nameof(DisplaySettings.ThemeMode))

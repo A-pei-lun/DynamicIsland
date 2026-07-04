@@ -28,6 +28,9 @@ namespace DynamicIsland
         Transparent,
         /// <summary>DWM Mica：平涂暗色无模糊（小窗偏闷）。</summary>
         Mica,
+        /// <summary>液态玻璃（beta）：自渲染可调半径高斯模糊。排除截屏+抓身后桌面+WPF BlurEffect，
+        /// 比 DWM 亚克力更可控（半径/底色/帧率全可调）但耗 CPU。窗口基座走 state2 透穿，玻璃叠在上面。</summary>
+        LiquidGlass,
     }
 
     /// <summary>灵动岛主题模式。System 跟随 Windows 个性化（默认）；Light/Dark 强制浅/深色。</summary>
@@ -127,6 +130,24 @@ namespace DynamicIsland
         // (state4 模糊量 DWM 固定，想"更低的模糊"只能关模糊落 state2。默认开。)
         private bool _blurEnabled = true;
         public bool BlurEnabled { get => _blurEnabled; set => Set(ref _blurEnabled, value); }
+
+        // ── 液态玻璃（beta）：自渲染可调半径高斯模糊。仅 LiquidGlass 模式生效。
+        // DWM 任何路径都不开放模糊半径，要可调半径只能自渲染（见 LiquidGlassRenderer）。
+        // 半径：BlurEffect.Radius，0=无模糊（≈锐利看穿），越大越糊。默认 22（≈spike 验证值）。
+        private double _glassBlurRadius = 22.0;
+        public double GlassBlurRadius { get => _glassBlurRadius; set => Set(ref _glassBlurRadius, Math.Clamp(value, 0.0, 100.0)); }
+
+        // 底色浓度：玻璃叠层底色 alpha（深=黑/浅=白），0≈无色全透，100=强底色。与半径独立。默认 40。
+        private double _glassTintIntensity = 40.0;
+        public double GlassTintIntensity { get => _glassTintIntensity; set => Set(ref _glassTintIntensity, Math.Clamp(value, 0.0, 100.0)); }
+
+        // 金边：顶部高光 + 底部阴影 + 描边，增强玻璃质感。复用 MainWindow 现有 TopHighlight/BottomHighlight/BorderBrush。默认开。
+        private bool _glassEdgeEnabled = true;
+        public bool GlassEdgeEnabled { get => _glassEdgeEnabled; set => Set(ref _glassEdgeEnabled, value); }
+
+        // 抓屏帧率：LiquidGlassRenderer 每秒抓身后桌面次数。越高越流畅越耗 CPU（BlurEffect 为 CPU 渲染）。默认 30。
+        private int _glassCaptureFps = 30;
+        public int GlassCaptureFps { get => _glassCaptureFps; set => Set(ref _glassCaptureFps, (int)Math.Clamp(value, 1, 60)); }
 
         // 主题：System 跟随系统（默认）/ Light / Dark
         private ThemeMode _themeMode = ThemeMode.System;
@@ -271,6 +292,10 @@ namespace DynamicIsland
             BackdropMode = _backdropMode,
             BlurIntensity = _blurIntensity,
             BlurEnabled = _blurEnabled,
+            GlassBlurRadius = _glassBlurRadius,
+            GlassTintIntensity = _glassTintIntensity,
+            GlassEdgeEnabled = _glassEdgeEnabled,
+            GlassCaptureFps = _glassCaptureFps,
             ThemeMode = _themeMode,
         };
 
@@ -300,6 +325,10 @@ namespace DynamicIsland
             BackdropMode = Enum.IsDefined(typeof(BackdropMode), s.BackdropMode) ? s.BackdropMode : BackdropMode.Acrylic;
             BlurIntensity = Math.Clamp(s.BlurIntensity, 0.0, 100.0);
             BlurEnabled = s.BlurEnabled;
+            GlassBlurRadius = Math.Clamp(s.GlassBlurRadius, 0.0, 100.0);
+            GlassTintIntensity = Math.Clamp(s.GlassTintIntensity, 0.0, 100.0);
+            GlassEdgeEnabled = s.GlassEdgeEnabled;
+            GlassCaptureFps = (int)Math.Clamp(s.GlassCaptureFps, 1, 60);
             ThemeMode = Enum.IsDefined(typeof(ThemeMode), s.ThemeMode) ? s.ThemeMode : ThemeMode.System;
         }
 
@@ -329,6 +358,10 @@ namespace DynamicIsland
             public BackdropMode BackdropMode { get; set; } = BackdropMode.Acrylic;
             public double BlurIntensity { get; set; } = 50.0;
             public bool BlurEnabled { get; set; } = true;
+            public double GlassBlurRadius { get; set; } = 22.0;
+            public double GlassTintIntensity { get; set; } = 40.0;
+            public bool GlassEdgeEnabled { get; set; } = true;
+            public int GlassCaptureFps { get; set; } = 30;
             public ThemeMode ThemeMode { get; set; } = ThemeMode.System;
         }
     }

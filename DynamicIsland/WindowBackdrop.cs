@@ -77,9 +77,10 @@ namespace DynamicIsland
 
         /// <summary>
         /// 应用系统材质。幂等——切换模式/主题/模糊度时重调即可。
-        /// mode=Acrylic/Mica/Transparent；isDark 控制深浅色调（accent 底色与 DWM 深色模式）。
+        /// mode=Acrylic/Mica/Transparent/LiquidGlass；isDark 控制深浅色调（accent 底色与 DWM 深色模式）。
         /// Acrylic=blurEnabled 决定 state：开=state4 亚克力模糊，关=state2 锐利零模糊；tintIntensity 控底色浓淡(0=最透→100=最强)。
-        /// Transparent=state2 锐利穿透(MinAccentAlpha)；Mica=本类不挂 backdrop(调用方 GlassBorder 平涂实色兜底)。alpha 下限 MinAccentAlpha 防 black frame。
+        /// Transparent/LiquidGlass=state2 锐利穿透(MinAccentAlpha)；液态玻璃的模糊由调用方 LiquidGlassRenderer 自渲染叠在基座上。
+        /// Mica=本类不挂 backdrop(调用方 GlassBorder 平涂实色兜底)。alpha 下限 MinAccentAlpha 防 black frame。
         /// </summary>
         public static void Apply(IntPtr hwnd, BackdropMode mode, bool isDark, bool blurEnabled = true, double tintIntensity = 50.0)
         {
@@ -111,9 +112,11 @@ namespace DynamicIsland
                     break;
 
                 case BackdropMode.Transparent:
-                    // 全透明 = accent state2（TRANSPARENTGRADIENT）：锐利看穿 + 极小底色，无模糊。
-                    // spike 验证 state2 透明生效；state4(亚克力)会模糊，不满足"全透明"。
-                    // alpha=0 会被 DWM 当不可见跳过→黑，故用 MinAccentAlpha。
+                case BackdropMode.LiquidGlass:
+                    // 全透明 / 液态玻璃基座 = accent state2（TRANSPARENTGRADIENT）：锐利看穿 + 极小底色，无模糊。
+                    // 液态玻璃的模糊由调用方自渲染（LiquidGlassRenderer：抓身后桌面 + WPF BlurEffect）叠在基座上；
+                    // 基座本身只需透穿（让自渲染层显出 + 圆角外角区不画）。state4(亚克力)会模糊基座，不满足。
+                    // spike 验证 state2 透明生效；alpha=0 会被 DWM 当不可见跳过→黑，故用 MinAccentAlpha。
                     SetAccent(hwnd, ACCENT_ENABLE_TRANSPARENTGRADIENT,
                         ((uint)MinAccentAlpha << 24) | (isDark ? 0x1A1A1Au : 0xE8E8E8u));
                     break;
