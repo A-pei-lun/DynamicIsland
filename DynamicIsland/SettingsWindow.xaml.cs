@@ -35,8 +35,8 @@ namespace DynamicIsland
             PopulateThemeCombo();
             // 主题画刷按当前设置落色（XAML 默认深色，运行时按 IsLight 覆写）
             ApplyTheme();
-            // 按当前材质模式切液态玻璃卡片显隐 + Acrylic 两行启用态
-            UpdateGlassControlsVisibility();
+            // 按当前材质模式切亚克力/液态玻璃参数段显隐
+            UpdateBackdropParamVisibility();
             DisplaySettings.Instance.PropertyChanged += OnSettingsChanged;
             SystemEvents.DisplaySettingsChanged += OnDisplayTopologyChanged;
             // 系统主题变了（且 ThemeMode=System）要重刷画刷
@@ -125,7 +125,7 @@ namespace DynamicIsland
         }
 
         // ─── 外观：背景材质 ────────────────────────────────────────
-        // 项顺序须与 BackdropMode 枚举一致：0=Acrylic / 1=Transparent / 2=Mica
+        // 项顺序须与 BackdropMode 枚举一致：0=Acrylic / 1=Transparent / 2=Mica / 3=LiquidGlass
         private void PopulateBackdropCombo()
         {
             _suppressBackdropComboEvent = true;
@@ -149,21 +149,19 @@ namespace DynamicIsland
             int idx = BackdropCombo.SelectedIndex;
             if (idx < 0) return;
             DisplaySettings.Instance.BackdropMode = (BackdropMode)idx;
-            UpdateGlassControlsVisibility();
+            UpdateBackdropParamVisibility();
         }
 
         /// <summary>
-        /// 按当前材质模式切液态玻璃卡片显隐 + Acrylic 模糊/底色两行启用态。
-        /// 液态玻璃卡片仅 LiquidGlass 模式显示；Acrylic 的模糊/底色浓度仅亚克力生效，非亚克力置灰避免误用。
-        /// 在 ctor 末尾、BackdropCombo 改选、OnSettingsChanged(BackdropMode) 各调一次。
+        /// 按当前材质模式切“亚克力 / 液态玻璃”参数段显隐。
+        /// AcrylicSection 仅 Acrylic 模式显示（模糊开关 + 底色浓度）；GlassSection 仅 LiquidGlass 模式显示（半径/底色/金边/帧率）。
+        /// 其余模式（全透明 / 云母）两者皆隐。在 ctor 末尾、BackdropCombo 改选、OnSettingsChanged(BackdropMode) 各调一次。
         /// </summary>
-        private void UpdateGlassControlsVisibility()
+        private void UpdateBackdropParamVisibility()
         {
             var mode = DisplaySettings.Instance.BackdropMode;
-            GlassCard.Visibility = mode == BackdropMode.LiquidGlass ? Visibility.Visible : Visibility.Collapsed;
-            bool isAcrylic = mode == BackdropMode.Acrylic;
-            BlurToggle.IsEnabled = isAcrylic;
-            BlurSlider.IsEnabled = isAcrylic;
+            AcrylicSection.Visibility = mode == BackdropMode.Acrylic ? Visibility.Visible : Visibility.Collapsed;
+            GlassSection.Visibility = mode == BackdropMode.LiquidGlass ? Visibility.Visible : Visibility.Collapsed;
         }
 
         // ─── 外观：主题 ──────────────────────────────────────────
@@ -221,7 +219,7 @@ namespace DynamicIsland
                         try { BackdropCombo.SelectedIndex = idx; }
                         finally { _suppressBackdropComboEvent = false; }
                     }
-                    UpdateGlassControlsVisibility();
+                    UpdateBackdropParamVisibility();
                 });
             }
             else if (e.PropertyName == nameof(DisplaySettings.ThemeMode))

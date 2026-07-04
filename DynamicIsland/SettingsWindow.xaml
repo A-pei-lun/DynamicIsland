@@ -302,7 +302,7 @@
             <ScrollViewer VerticalScrollBarVisibility="Auto" Visibility="{Binding IsChecked, ElementName=NavAppearance, Converter={StaticResource BoolToVis}}">
                 <StackPanel Margin="28,20,28,24">
                     <TextBlock Text="外观" Style="{StaticResource PageTitle}"/>
-                    <TextBlock Text="灵动岛背景材质、主题与模糊。亚克力模糊身后桌面；关模糊则锐利看穿；底色浓度调节材质深浅。" Style="{StaticResource PageDesc}"/>
+                    <TextBlock Text="灵动岛背景材质与主题。选定材质后，下方展开对应的可调参数。" Style="{StaticResource PageDesc}"/>
 
                     <TextBlock Text="背景" Style="{StaticResource SectionTitle}"/>
                     <Border Style="{StaticResource SettingsCard}">
@@ -312,12 +312,12 @@
                                     <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                                     <StackPanel Grid.Column="0" VerticalAlignment="Center">
                                         <TextBlock Text="材质" Style="{StaticResource RowTitle}"/>
-                                        <TextBlock Text="亚克力 / 全透明 / 云母平涂" Style="{StaticResource RowDesc}"/>
+                                        <TextBlock Text="亚克力 / 全透明 / 云母 / 液态玻璃" Style="{StaticResource RowDesc}"/>
                                     </StackPanel>
                                     <ComboBox Grid.Column="1" x:Name="BackdropCombo" Style="{StaticResource Win11ComboBox}" Width="160" SelectionChanged="BackdropCombo_SelectionChanged"/>
                                 </Grid>
                             </Border>
-                            <Border Style="{StaticResource SettingRow}">
+                            <Border Style="{StaticResource SettingRowLast}">
                                 <Grid>
                                     <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                                     <StackPanel Grid.Column="0" VerticalAlignment="Center">
@@ -327,79 +327,91 @@
                                     <ComboBox Grid.Column="1" x:Name="ThemeCombo" Style="{StaticResource Win11ComboBox}" Width="160" SelectionChanged="ThemeCombo_SelectionChanged"/>
                                 </Grid>
                             </Border>
-                            <Border Style="{StaticResource SettingRow}">
-                                <Grid>
-                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                                    <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                                        <TextBlock Text="模糊" Style="{StaticResource RowTitle}"/>
-                                        <TextBlock Text="开=亚克力模糊；关=锐利看穿(无模糊)。仅亚克力生效。" Style="{StaticResource RowDesc}"/>
-                                    </StackPanel>
-                                    <ToggleButton Grid.Column="1" x:Name="BlurToggle" Style="{StaticResource Win11Toggle}" IsChecked="{Binding BlurEnabled}"/>
-                                </Grid>
-                            </Border>
-                            <Border Style="{StaticResource SettingRowLast}">
-                                <Grid>
-                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="120"/><ColumnDefinition Width="44"/></Grid.ColumnDefinitions>
-                                    <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                                        <TextBlock Text="底色浓度" Style="{StaticResource RowTitle}"/>
-                                        <TextBlock Text="材质底色深浅。系统亚克力模糊量固定，此值只调底色。" Style="{StaticResource RowDesc}"/>
-                                    </StackPanel>
-                                    <Slider Grid.Column="1" x:Name="BlurSlider" Style="{StaticResource Win11Slider}" Minimum="0" Maximum="100" Value="{Binding BlurIntensity}" TickFrequency="5" IsSnapToTickEnabled="True" VerticalAlignment="Center"/>
-                                    <TextBlock Grid.Column="2" Text="{Binding BlurIntensity, StringFormat={}{0:0}%}" FontSize="12" VerticalAlignment="Center" TextAlignment="Right"/>
-                                </Grid>
-                            </Border>
                         </StackPanel>
                     </Border>
 
-                    <TextBlock Text="液态玻璃（beta）" Style="{StaticResource SectionTitle}" Margin="0,4,0,6"/>
-                    <Border x:Name="GlassCard" Style="{StaticResource SettingsCard}" Visibility="Collapsed">
-                        <StackPanel>
-                            <TextBlock Text="自渲染可调模糊，实验性。排除截屏+抓身后桌面+WPF 模糊实现，比 DWM 亚克力更可控（半径/底色/帧率全可调）但耗 CPU。仅&quot;液态玻璃&quot;材质生效。" Style="{StaticResource RowDesc}" Margin="0,2,0,8"/>
-                            <Border Style="{StaticResource SettingRow}">
-                                <Grid>
-                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="180"/><ColumnDefinition Width="44"/></Grid.ColumnDefinitions>
-                                    <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                                        <TextBlock Text="模糊半径" Style="{StaticResource RowTitle}"/>
-                                        <TextBlock Text="身后桌面高斯模糊半径。DWM 亚克力模糊量固定不可调，液态玻璃自渲染才能调。越大越糊。" Style="{StaticResource RowDesc}"/>
-                                    </StackPanel>
-                                    <Slider Grid.Column="1" Style="{StaticResource Win11Slider}" Minimum="0" Maximum="100" Value="{Binding GlassBlurRadius}" TickFrequency="1" VerticalAlignment="Center"/>
-                                    <TextBlock Grid.Column="2" Text="{Binding GlassBlurRadius, StringFormat={}{0:0}}" FontSize="12" VerticalAlignment="Center" TextAlignment="Right"/>
-                                </Grid>
-                            </Border>
-                            <Border Style="{StaticResource SettingRow}">
-                                <Grid>
-                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="180"/><ColumnDefinition Width="44"/></Grid.ColumnDefinitions>
-                                    <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                                        <TextBlock Text="底色浓度" Style="{StaticResource RowTitle}"/>
-                                        <TextBlock Text="玻璃叠层底色深浅。0≈无色全透，100=强底色。深色主题叠黑、浅色叠白。" Style="{StaticResource RowDesc}"/>
-                                    </StackPanel>
-                                    <Slider Grid.Column="1" Style="{StaticResource Win11Slider}" Minimum="0" Maximum="100" Value="{Binding GlassTintIntensity}" TickFrequency="5" IsSnapToTickEnabled="True" VerticalAlignment="Center"/>
-                                    <TextBlock Grid.Column="2" Text="{Binding GlassTintIntensity, StringFormat={}{0:0}%}" FontSize="12" VerticalAlignment="Center" TextAlignment="Right"/>
-                                </Grid>
-                            </Border>
-                            <Border Style="{StaticResource SettingRow}">
-                                <Grid>
-                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                                    <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                                        <TextBlock Text="金边" Style="{StaticResource RowTitle}"/>
-                                        <TextBlock Text="顶部高光 + 底部阴影 + 描边，增强玻璃质感。" Style="{StaticResource RowDesc}"/>
-                                    </StackPanel>
-                                    <ToggleButton Grid.Column="1" Style="{StaticResource Win11Toggle}" IsChecked="{Binding GlassEdgeEnabled}"/>
-                                </Grid>
-                            </Border>
-                            <Border Style="{StaticResource SettingRowLast}">
-                                <Grid>
-                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="180"/><ColumnDefinition Width="44"/></Grid.ColumnDefinitions>
-                                    <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                                        <TextBlock Text="抓屏帧率" Style="{StaticResource RowTitle}"/>
-                                        <TextBlock Text="每秒抓身后桌面次数。越高越流畅越耗 CPU（BlurEffect 为 CPU 渲染）。" Style="{StaticResource RowDesc}"/>
-                                    </StackPanel>
-                                    <Slider Grid.Column="1" Style="{StaticResource Win11Slider}" Minimum="1" Maximum="60" Value="{Binding GlassCaptureFps}" TickFrequency="1" IsSnapToTickEnabled="True" VerticalAlignment="Center"/>
-                                    <TextBlock Grid.Column="2" Text="{Binding GlassCaptureFps, StringFormat={}{0:0}}" FontSize="12" VerticalAlignment="Center" TextAlignment="Right"/>
-                                </Grid>
-                            </Border>
-                        </StackPanel>
-                    </Border>
+                    <!-- 亚克力参数：仅 Acrylic 模式显示 -->
+                    <StackPanel x:Name="AcrylicSection" Visibility="Collapsed">
+                        <TextBlock Text="亚克力" Style="{StaticResource SectionTitle}" Margin="0,4,0,6"/>
+                        <Border Style="{StaticResource SettingsCard}">
+                            <StackPanel>
+                                <Border Style="{StaticResource SettingRow}">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                            <TextBlock Text="模糊" Style="{StaticResource RowTitle}"/>
+                                            <TextBlock Text="开=亚克力模糊；关=锐利看穿(无模糊)。" Style="{StaticResource RowDesc}"/>
+                                        </StackPanel>
+                                        <ToggleButton Grid.Column="1" Style="{StaticResource Win11Toggle}" IsChecked="{Binding BlurEnabled}"/>
+                                    </Grid>
+                                </Border>
+                                <Border Style="{StaticResource SettingRowLast}">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="120"/><ColumnDefinition Width="44"/></Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                            <TextBlock Text="底色浓度" Style="{StaticResource RowTitle}"/>
+                                            <TextBlock Text="材质底色深浅。系统亚克力模糊量固定，此值只调底色。" Style="{StaticResource RowDesc}"/>
+                                        </StackPanel>
+                                        <Slider Grid.Column="1" Style="{StaticResource Win11Slider}" Minimum="0" Maximum="100" Value="{Binding BlurIntensity}" TickFrequency="5" IsSnapToTickEnabled="True" VerticalAlignment="Center"/>
+                                        <TextBlock Grid.Column="2" Text="{Binding BlurIntensity, StringFormat={}{0:0}%}" FontSize="12" VerticalAlignment="Center" TextAlignment="Right"/>
+                                    </Grid>
+                                </Border>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+
+                    <!-- 液态玻璃参数（beta）：仅 LiquidGlass 模式显示 -->
+                    <StackPanel x:Name="GlassSection" Visibility="Collapsed">
+                        <TextBlock Text="液态玻璃（beta）" Style="{StaticResource SectionTitle}" Margin="0,4,0,6"/>
+                        <Border Style="{StaticResource SettingsCard}">
+                            <StackPanel>
+                                <TextBlock Text="自渲染可调模糊，实验性。排除截屏+抓身后桌面+WPF 模糊实现，比 DWM 亚克力更可控（半径/底色/帧率全可调）但耗 CPU。仅&quot;液态玻璃&quot;材质生效。" Style="{StaticResource RowDesc}" Margin="0,2,0,8"/>
+                                <Border Style="{StaticResource SettingRow}">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="180"/><ColumnDefinition Width="44"/></Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                            <TextBlock Text="模糊半径" Style="{StaticResource RowTitle}"/>
+                                            <TextBlock Text="身后桌面高斯模糊半径。DWM 亚克力模糊量固定不可调，液态玻璃自渲染才能调。越大越糊。" Style="{StaticResource RowDesc}"/>
+                                        </StackPanel>
+                                        <Slider Grid.Column="1" Style="{StaticResource Win11Slider}" Minimum="0" Maximum="100" Value="{Binding GlassBlurRadius}" TickFrequency="1" VerticalAlignment="Center"/>
+                                        <TextBlock Grid.Column="2" Text="{Binding GlassBlurRadius, StringFormat={}{0:0}}" FontSize="12" VerticalAlignment="Center" TextAlignment="Right"/>
+                                    </Grid>
+                                </Border>
+                                <Border Style="{StaticResource SettingRow}">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="180"/><ColumnDefinition Width="44"/></Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                            <TextBlock Text="底色浓度" Style="{StaticResource RowTitle}"/>
+                                            <TextBlock Text="玻璃叠层底色深浅。0≈无色全透，100=强底色。深色主题叠黑、浅色叠白。" Style="{StaticResource RowDesc}"/>
+                                        </StackPanel>
+                                        <Slider Grid.Column="1" Style="{StaticResource Win11Slider}" Minimum="0" Maximum="100" Value="{Binding GlassTintIntensity}" TickFrequency="5" IsSnapToTickEnabled="True" VerticalAlignment="Center"/>
+                                        <TextBlock Grid.Column="2" Text="{Binding GlassTintIntensity, StringFormat={}{0:0}%}" FontSize="12" VerticalAlignment="Center" TextAlignment="Right"/>
+                                    </Grid>
+                                </Border>
+                                <Border Style="{StaticResource SettingRow}">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                            <TextBlock Text="金边" Style="{StaticResource RowTitle}"/>
+                                            <TextBlock Text="顶部高光 + 底部阴影 + 描边，增强玻璃质感。" Style="{StaticResource RowDesc}"/>
+                                        </StackPanel>
+                                        <ToggleButton Grid.Column="1" Style="{StaticResource Win11Toggle}" IsChecked="{Binding GlassEdgeEnabled}"/>
+                                    </Grid>
+                                </Border>
+                                <Border Style="{StaticResource SettingRowLast}">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="180"/><ColumnDefinition Width="44"/></Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                            <TextBlock Text="抓屏帧率" Style="{StaticResource RowTitle}"/>
+                                            <TextBlock Text="每秒抓身后桌面次数。越高越流畅越耗 CPU（BlurEffect 为 CPU 渲染）。" Style="{StaticResource RowDesc}"/>
+                                        </StackPanel>
+                                        <Slider Grid.Column="1" Style="{StaticResource Win11Slider}" Minimum="1" Maximum="60" Value="{Binding GlassCaptureFps}" TickFrequency="1" IsSnapToTickEnabled="True" VerticalAlignment="Center"/>
+                                        <TextBlock Grid.Column="2" Text="{Binding GlassCaptureFps, StringFormat={}{0:0}}" FontSize="12" VerticalAlignment="Center" TextAlignment="Right"/>
+                                    </Grid>
+                                </Border>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
                 </StackPanel>
             </ScrollViewer>
 
