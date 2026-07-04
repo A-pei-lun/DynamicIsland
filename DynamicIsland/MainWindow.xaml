@@ -7,7 +7,7 @@
         mc:Ignorable="d"
         Title="DynamicIsland"
         WindowStyle="None"
-        AllowsTransparency="True"
+        AllowsTransparency="False"
         Background="Transparent"
         Topmost="True"
         Width="200"

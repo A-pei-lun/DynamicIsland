@@ -29,7 +29,6 @@ namespace DynamicIsland
         private const double AlertHeight = 40;
         private const double AlertStartWidth = 280;
         private const double TopMargin = 12;
-        private const double CornerRadiusBase = 20;
 
         // ─── 状态机 ────────────────────────────────────────────────
         private enum DisplayState { Collapsed, Hovered, Expanded, Alert }
@@ -67,6 +66,8 @@ namespace DynamicIsland
 
         // ─── 全屏抑制 ──────────────────────────────────────────────
         private readonly FullScreenDetector _fullScreen;
+        // 当前是否处于「全屏抑制」隐藏态。仅在该标志翻转时播抽纸动画，避免每次回灌重复触发。
+        private bool _isSuppressed;
 
         // Hover 动效专用的 BorderBrush（Color 不含 alpha，Opacity 控制透明度）
         private readonly SolidColorBrush _hoverBorderBrush = new(Colors.White) { Opacity = 0.2 };
@@ -93,13 +94,11 @@ namespace DynamicIsland
         private const int WS_DLGFRAME = 0x00400000;
 
         // ─── 主题色 ────────────────────────────────────────────────
-        private readonly Color _lightBg = Color.FromArgb(0xCC, 0xE8, 0xE8, 0xE8);
         private readonly Color _lightBorder = Color.FromArgb(0x28, 0x00, 0x00, 0x00);
         private readonly Color _lightText = Colors.Black;
         private readonly Color _lightHighlight = Color.FromArgb(0x55, 0xFF, 0xFF, 0xFF);
         private readonly Color _lightHighlightEnd = Color.FromArgb(0x00, 0xFF, 0xFF, 0xFF);
 
-        private readonly Color _darkBg = Color.FromArgb(0xBF, 0x1A, 0x1A, 0x1A);
         private readonly Color _darkBorder = Color.FromArgb(0x33, 0xFF, 0xFF, 0xFF);
         private readonly Color _darkText = Colors.White;
         private readonly Color _darkHighlight = Color.FromArgb(0x44, 0xFF, 0xFF, 0xFF);
@@ -157,6 +156,15 @@ namespace DynamicIsland
         }
 
         // ─── 生命周期 ──────────────────────────────────────────────
+        protected override void OnSourceInitialized(EventArgs e)
+        {
+            base.OnSourceInitialized(e);
+            // AllowsTransparency=False 下合成目标默认不透明（黑），置透明让 DWM backdrop 透出
+            if (PresentationSource.FromVisual(this) is HwndSource src && src.CompositionTarget != null)
+                src.CompositionTarget.BackgroundColor = Colors.Transparent;
+            ApplyBackdrop();
+        }
+
         private void OnLoaded(object sender, RoutedEventArgs e)
         {
             RemoveFrame();
@@ -223,6 +231,29 @@ namespace DynamicIsland
             catch { }
         }
 
+        // ─── DWM 背景材质 ──────────────────────────────────────────
+        /// <summary>
+        /// 应用系统材质（Acrylic/Mica/全透明）+ 系统圆角 + 深色模式。幂等，切换模式/主题时重调。
+        /// 前提：OnSourceInitialized 已把 CompositionTarget 置透明、AllowsTransparency=False。
+        /// </summary>
+        private void ApplyBackdrop()
+        {
+            var hwnd = new WindowInteropHelper(this).Handle;
+            if (hwnd == IntPtr.Zero) return;
+            // 主题 + 模糊均来自设置：System 主题读注册表；Acrylic 模糊开关 + 底色浓度(见 WindowBackdrop)
+            bool isLight = DisplaySettings.Instance.IsLight();
+            WindowBackdrop.Apply(hwnd, DisplaySettings.Instance.BackdropMode,
+                isDark: !isLight,
+                blurEnabled: DisplaySettings.Instance.BlurEnabled,
+                tintIntensity: DisplaySettings.Instance.BlurIntensity);
+
+            // Mica：DWM 在 borderless 窗口上渲染纯黑（WindowBackdrop 内已不挂 backdrop），
+            // 由 GlassBorder 平涂实色兜底，兑现"云母平涂暗色"。Acrylic/Transparent 仍透明，让 accent 透出。
+            GlassBorder.Background = DisplaySettings.Instance.BackdropMode == BackdropMode.Mica
+                ? new SolidColorBrush(isLight ? Color.FromRgb(0xE8, 0xE8, 0xE8) : Color.FromRgb(0x1A, 0x1A, 0x1A))
+                : Brushes.Transparent;
+        }
+
         // ─── 主题 ──────────────────────────────────────────────────
         private void OnThemeChanged(object? sender, UserPreferenceChangedEventArgs e)
         {
@@ -235,14 +266,13 @@ namespace DynamicIsland
 
         private void ApplySystemTheme()
         {
-            bool isLight = IsWindowsLightTheme();
+            bool isLight = DisplaySettings.Instance.IsLight(); // 主题来自设置：System 跟随系统 / Light / Dark
 
-            var bg = isLight ? _lightBg : _darkBg;
             var text = isLight ? _lightText : _darkText;
             var hl = isLight ? _lightHighlight : _darkHighlight;
             var hlEnd = isLight ? _lightHighlightEnd : _darkHighlightEnd;
 
-            GlassBorder.Background = new SolidColorBrush(bg);
+            // GlassBorder.Background 由 ApplyBackdrop 按 BackdropMode 设定（Mica=平涂实色兜底，其余=透明让材质透出）
 
             var borderColor = isLight ? _lightBorder : _darkBorder;
             _hoverBorderBrush.Color = Color.FromArgb(255, borderColor.R, borderColor.G, borderColor.B);
@@ -258,19 +288,9 @@ namespace DynamicIsland
 
             var hlSoft = Color.FromArgb((byte)(hl.A / 2), hl.R, hl.G, hl.B);
             BottomHighlight.Background = new LinearGradientBrush(hlEnd, hlSoft, 90);
-        }
 
-        private static bool IsWindowsLightTheme()
-        {
-            try
-            {
-                using var key = Registry.CurrentUser.OpenSubKey(
-                    @"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize");
-                if (key?.GetValue("AppsUseLightTheme") is int val)
-                    return val == 1;
-            }
-            catch { }
-            return false;
+            // 主题变了，深色模式属性也跟着刷新
+            ApplyBackdrop();
         }
 
         // ─── 位置 ──────────────────────────────────────────────────
@@ -313,7 +333,8 @@ namespace DynamicIsland
             RootGrid.LayoutTransform = new ScaleTransform(_scale, _scale);
             RootGrid.Width = CollapsedWidth;
             RootGrid.Height = CollapsedHeight;
-            GlassBorder.CornerRadius = new CornerRadius(CornerRadiusBase * _scale);
+            // 配系统圆角（AllowsTransparency=False 下系统给 ~8px，GlassBorder 跟齐防漏角）
+            GlassBorder.CornerRadius = new CornerRadius(8.0 / _scale);
 
             Width = CollapsedWidth * _scale;
             Height = CollapsedHeight * _scale;
@@ -525,7 +546,91 @@ namespace DynamicIsland
                 && _fullScreen.IsFullScreen
                 && _alerts.Current == null;
 
-            Visibility = suppress ? Visibility.Hidden : Visibility.Visible;
+            // 仅在抑制态翻转时播抽纸动画；状态未变直接返回（Visibility 已由上一次动画定好）
+            if (suppress == _isSuppressed) return;
+            _isSuppressed = suppress;
+
+            if (suppress)
+                PlayTissueRetract();   // 进全屏：胶囊塞回顶部
+            else
+                PlayTissueAppear();    // 退全屏：从顶部抽出、长大成胶囊
+        }
+
+        // ─── 抽纸动画（全屏进出）──────────────────────────────────
+        // 退全屏出现：从屏幕上沿外滑入 + 顶部中心放大 + 淡入，像一张纸从顶部被抽出。
+        // 进全屏收起：倒放——滑出上沿 + 缩向顶部中心 + 淡出，像被塞回。
+        // 参考 vivo 平板应用中心下载任务退出到桌面的收起动画。
+        private const double TissueStartScale = 0.6;
+        private const int TissueAppearMs = 380;
+        private const int TissueRetractMs = 300;
+
+        private ScaleTransform EnsureTissueScale()
+        {
+            if (GlassBorder.RenderTransform is ScaleTransform s)
+                return s;
+            s = new ScaleTransform(1, 1);
+            GlassBorder.RenderTransform = s;
+            GlassBorder.RenderTransformOrigin = new Point(0.5, 0); // 顶部中心：向下生长
+            return s;
+        }
+
+        private void PlayTissueAppear()
+        {
+            CancelShrink();
+
+            double restTop = _targetMonitor.Bounds.Top + TopMargin * _scale;
+            double startTop = _targetMonitor.Bounds.Top - Height - 4; // 整个胶囊悬在屏上沿外
+
+            var scale = EnsureTissueScale();
+
+            // 先停掉可能在跑的旧动画（如 retract 未完），动画 precedence 才不会把起始基值顶掉
+            this.BeginAnimation(TopProperty, null);
+            GlassBorder.BeginAnimation(UIElement.OpacityProperty, null);
+            scale.BeginAnimation(ScaleTransform.ScaleXProperty, null);
+            scale.BeginAnimation(ScaleTransform.ScaleYProperty, null);
+
+            // 起始态：缩到 0.6、悬于上沿外、全透明——先就位再显示，免得首帧闪现在休息位
+            scale.ScaleX = TissueStartScale;
+            scale.ScaleY = TissueStartScale;
+            Top = startTop;
+            GlassBorder.Opacity = 0;
+            Visibility = Visibility.Visible;
+
+            var ease = new QuadraticEase { EasingMode = EasingMode.EaseOut };
+            AnimateDp(scale, ScaleTransform.ScaleXProperty, 1.0, TissueAppearMs, ease);
+            AnimateDp(scale, ScaleTransform.ScaleYProperty, 1.0, TissueAppearMs, ease);
+            AnimateDp(GlassBorder, UIElement.OpacityProperty, 1.0, TissueAppearMs, ease);
+            AnimateDp(this, TopProperty, restTop, TissueAppearMs, ease);
+        }
+
+        private void PlayTissueRetract()
+        {
+            CancelShrink();
+
+            double restTop = _targetMonitor.Bounds.Top + TopMargin * _scale;
+            double endTop = _targetMonitor.Bounds.Top - Height - 4; // 滑出上沿外
+
+            var scale = EnsureTissueScale();
+            var ease = new QuadraticEase { EasingMode = EasingMode.EaseIn };
+
+            AnimateDp(scale, ScaleTransform.ScaleXProperty, TissueStartScale, TissueRetractMs, ease);
+            AnimateDp(scale, ScaleTransform.ScaleYProperty, TissueStartScale, TissueRetractMs, ease);
+            AnimateDp(GlassBorder, UIElement.OpacityProperty, 0.0, TissueRetractMs, ease);
+            AnimateDp(this, TopProperty, endTop, TissueRetractMs, ease);
+
+            // 动画收尾再隐藏，避免提前 Hidden 造成一帧闪退；token+标志双守卫防过期
+            int token = ++_animationToken;
+            DelayedInvoke(TissueRetractMs, () =>
+            {
+                if (token != _animationToken) return;       // 期间已触发了 appear
+                if (!_isSuppressed) return;                  // 期间已退出全屏，别藏
+                Visibility = Visibility.Hidden;
+                // 复位到 rest 态，方便下次 appear 从干净状态起跳
+                Top = restTop;
+                GlassBorder.Opacity = 1;
+                scale.ScaleX = 1;
+                scale.ScaleY = 1;
+            });
         }
 
         // ─── 瞬时提醒 ──────────────────────────────────────────────
@@ -601,6 +706,25 @@ namespace DynamicIsland
             else if (e.PropertyName == nameof(DisplaySettings.DownloadFolderPath))
             {
                 Dispatcher.Invoke(() => _download.Restart());
+            }
+            else if (e.PropertyName == nameof(DisplaySettings.BackdropMode))
+            {
+                Dispatcher.Invoke(ApplyBackdrop);
+            }
+            else if (e.PropertyName == nameof(DisplaySettings.BlurIntensity)
+                  || e.PropertyName == nameof(DisplaySettings.BlurEnabled))
+            {
+                Dispatcher.Invoke(ApplyBackdrop);
+            }
+            else if (e.PropertyName == nameof(DisplaySettings.ThemeMode))
+            {
+                // 主题变：重刷文字/边框/高光，并连带重应用材质（深浅底色）
+                Dispatcher.Invoke(ApplySystemTheme);
+            }
+            else if (e.PropertyName == nameof(DisplaySettings.EnableFullScreenSuppress))
+            {
+                // 全屏抑制开关变了：立即重算（用户在全屏中关闭开关时，应即时让岛重现）
+                Dispatcher.Invoke(UpdateFullScreenSuppression);
             }
         }
 

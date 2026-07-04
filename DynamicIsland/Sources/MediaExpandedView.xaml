@@ -66,6 +66,15 @@
                     Background="#22FFFFFF"
                     VerticalAlignment="Center"
                     Margin="0,0,10,0">
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding HasMedia}" Value="False">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
                 <Image Source="{Binding Thumbnail}"
                        Stretch="UniformToFill"/>
             </Border>
@@ -133,6 +142,15 @@
 
         <!-- 下部：控制按钮 -->
         <Grid Grid.Row="1" Margin="0,10,0,0">
+            <Grid.Style>
+                <Style TargetType="Grid">
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding HasMedia}" Value="False">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Grid.Style>
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="Auto"/>
@@ -178,9 +196,10 @@
         </Grid>
 
         <!-- 空状态：无媒体会话时盖住封面空方块和无效控制按钮，居中显示占位。
-             HasMedia=false 显示，true 时 Collapsed 不挡内容。 -->
+             不再用深色底（#BF1A1A1A）——无媒体时要"取消深色方框"，只留文字浮于材质上。
+             配合下方 thumbnail/controls 在 HasMedia=False 时 Collapsed，避免空方块与无效按钮残留。 -->
         <Border Grid.RowSpan="2"
-                Background="#BF1A1A1A"
+                Background="Transparent"
                 HorizontalAlignment="Stretch"
                 VerticalAlignment="Stretch">
             <Border.Style>

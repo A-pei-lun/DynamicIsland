@@ -4,6 +4,7 @@ using System.IO;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Windows.Threading;
+using Microsoft.Win32;
 
 namespace DynamicIsland
 {
@@ -18,6 +19,28 @@ namespace DynamicIsland
     /// - 启动 App.OnStartup 调 Load()；属性变更 500ms debounce 自动落盘；进程退出 OnExit 调 SaveNow() 兜尾
     /// - 文件不存在/JSON 损坏/字段缺失 → 保留默认值，不抛
     /// </summary>
+    /// <summary>灵动岛背景材质模式（AllowsTransparency=False + DWM 系统材质）。</summary>
+    public enum BackdropMode
+    {
+        /// <summary>DWM Acrylic：模糊身后桌面，深色调（默认）。</summary>
+        Acrylic,
+        /// <summary>全透明：无 backdrop，直接看穿到桌面。白字浮于桌面，亮桌面下可读性差。</summary>
+        Transparent,
+        /// <summary>DWM Mica：平涂暗色无模糊（小窗偏闷）。</summary>
+        Mica,
+    }
+
+    /// <summary>灵动岛主题模式。System 跟随 Windows 个性化（默认）；Light/Dark 强制浅/深色。</summary>
+    public enum ThemeMode
+    {
+        /// <summary>跟随系统：读 HKCU\...\Themes\Personalize\AppsUseLightTheme。</summary>
+        System,
+        /// <summary>强制浅色：深色文字 + 浅色材质底。</summary>
+        Light,
+        /// <summary>强制深色：白字 + 深色材质底。</summary>
+        Dark,
+    }
+
     public sealed class DisplaySettings : INotifyPropertyChanged
     {
         public static DisplaySettings Instance { get; } = new();
@@ -89,6 +112,51 @@ namespace DynamicIsland
         private int _targetMonitorIndex = 0;
 
         public int TargetMonitorIndex { get => _targetMonitorIndex; set => Set(ref _targetMonitorIndex, value); }
+
+        // 背景材质：Acrylic 默认（DWM 模糊）/ Transparent 全透明 / Mica 平涂
+        private BackdropMode _backdropMode = BackdropMode.Acrylic;
+        public BackdropMode BackdropMode { get => _backdropMode; set => Set(ref _backdropMode, value); }
+
+        // 亚克力模糊度（实为底色浓度 tint）：0–100，越大底色越浓。
+        // 仅 Acrylic 模式生效；走 Win10 accent 路径的 GradientColor alpha，跨收起/展开态一致。
+        // 默认 50：比旧固定底色淡，能稍微看清身后桌面。(模糊本身由 BlurEnabled 开关控，DWM 固定不可调。)
+        private double _blurIntensity = 50.0;
+        public double BlurIntensity { get => _blurIntensity; set => Set(ref _blurIntensity, Math.Clamp(value, 0.0, 100.0)); }
+
+        // 亚克力模糊开关：开=state4 亚克力模糊，关=state2 锐利零模糊。仅 Acrylic 模式生效。
+        // (state4 模糊量 DWM 固定，想"更低的模糊"只能关模糊落 state2。默认开。)
+        private bool _blurEnabled = true;
+        public bool BlurEnabled { get => _blurEnabled; set => Set(ref _blurEnabled, value); }
+
+        // 主题：System 跟随系统（默认）/ Light / Dark
+        private ThemeMode _themeMode = ThemeMode.System;
+        public ThemeMode ThemeMode { get => _themeMode; set => Set(ref _themeMode, value); }
+
+        /// <summary>解析当前应当使用的主题明暗：System→读注册表 AppsUseLightTheme；Light→true；Dark→false。
+        /// 集中在此供主岛与设置窗共用。注：用全限定 DynamicIsland.ThemeMode，避开 net10 WPF Window.ThemeMode 预览属性的同名遮蔽。</summary>
+        public bool IsLight()
+        {
+            return ThemeMode switch
+            {
+                DynamicIsland.ThemeMode.Light => true,
+                DynamicIsland.ThemeMode.Dark => false,
+                _ => IsWindowsLightTheme(), // System
+            };
+        }
+
+        /// <summary>读 HKCU\...\Themes\Personalize\AppsUseLightTheme。读不到按深色（false）。</summary>
+        private static bool IsWindowsLightTheme()
+        {
+            try
+            {
+                using var key = Registry.CurrentUser.OpenSubKey(
+                    @"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize");
+                if (key?.GetValue("AppsUseLightTheme") is int val)
+                    return val == 1;
+            }
+            catch { }
+            return false;
+        }
 
         public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -200,6 +268,10 @@ namespace DynamicIsland
             EnableFullScreenSuppress = _enableFullScreenSuppress,
             EnableSystemNotification = _enableSystemNotification,
             TargetMonitorIndex = _targetMonitorIndex,
+            BackdropMode = _backdropMode,
+            BlurIntensity = _blurIntensity,
+            BlurEnabled = _blurEnabled,
+            ThemeMode = _themeMode,
         };
 
         private void ApplySnapshot(Snapshot s)
@@ -224,6 +296,11 @@ namespace DynamicIsland
             EnableSystemNotification = s.EnableSystemNotification;
             // 负数视为主屏；过大不在这里钳（不知道当前接几块屏），MainWindow 用时再兜底
             TargetMonitorIndex = Math.Max(0, s.TargetMonitorIndex);
+            // 手改 JSON 写了非法枚举值时回默认，免得 UI 下标越界
+            BackdropMode = Enum.IsDefined(typeof(BackdropMode), s.BackdropMode) ? s.BackdropMode : BackdropMode.Acrylic;
+            BlurIntensity = Math.Clamp(s.BlurIntensity, 0.0, 100.0);
+            BlurEnabled = s.BlurEnabled;
+            ThemeMode = Enum.IsDefined(typeof(ThemeMode), s.ThemeMode) ? s.ThemeMode : ThemeMode.System;
         }
 
         /// <summary>
@@ -249,6 +326,10 @@ namespace DynamicIsland
             public bool EnableFullScreenSuppress { get; set; } = true;
             public bool EnableSystemNotification { get; set; } = true;
             public int TargetMonitorIndex { get; set; } = 0;
+            public BackdropMode BackdropMode { get; set; } = BackdropMode.Acrylic;
+            public double BlurIntensity { get; set; } = 50.0;
+            public bool BlurEnabled { get; set; } = true;
+            public ThemeMode ThemeMode { get; set; } = ThemeMode.System;
         }
     }
 }
