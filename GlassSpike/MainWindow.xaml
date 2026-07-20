@@ -1,0 +1,44 @@
+<Window x:Class="GlassSpike.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="GlassSpike" Width="440" Height="130"
+        WindowStyle="None" ResizeMode="NoResize"
+        AllowsTransparency="False"
+        WindowStartupLocation="CenterScreen"
+        Topmost="True"
+        Background="Transparent"
+        KeyDown="Window_KeyDown"
+        MouseLeftButtonDown="Window_MouseLeftButtonDown">
+    <Grid>
+        <!-- 1. 抓到的"窗后桌面" + 自渲染可调半径高斯模糊（BlurEffect） -->
+        <Image x:Name="CaptureImage" Stretch="Fill">
+            <Image.Effect>
+                <BlurEffect x:Name="Blur" Radius="22"/>
+            </Image.Effect>
+        </Image>
+
+        <!-- 2. 底色叠层（D 切深/浅），仅 Liquid 模式显示 -->
+        <Border x:Name="Tint" Background="#40000000"/>
+
+        <!-- 3. 液态玻璃边：顶高光 + 底阴影 + 强调色细描边（"金边"，E 切换） -->
+        <Border x:Name="GlassEdge" BorderThickness="1" BorderBrush="#66007ACC">
+            <Border.Background>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                    <GradientStop Color="#66FFFFFF" Offset="0"/>
+                    <GradientStop Color="#00FFFFFF" Offset="0.4"/>
+                    <GradientStop Color="#00000000" Offset="0.6"/>
+                    <GradientStop Color="#44000000" Offset="1"/>
+                </LinearGradientBrush>
+            </Border.Background>
+        </Border>
+
+        <!-- 状态 -->
+        <Border VerticalAlignment="Top" HorizontalAlignment="Left" Margin="8,8,0,0" CornerRadius="4" Padding="8,5" Background="#AA000000">
+            <TextBlock x:Name="Status" Foreground="#E6FFFFFF" FontSize="11" FontFamily="Consolas"/>
+        </Border>
+        <!-- 操作提示 -->
+        <Border VerticalAlignment="Bottom" HorizontalAlignment="Right" Margin="0,0,8,6" CornerRadius="4" Padding="6,3" Background="#80000000">
+            <TextBlock Foreground="#CCFFFFFF" FontSize="10" FontFamily="Consolas" Text="↑↓ 半径  B 模式  E 金边  D 深浅  Esc 退出"/>
+        </Border>
+    </Grid>
+</Window>

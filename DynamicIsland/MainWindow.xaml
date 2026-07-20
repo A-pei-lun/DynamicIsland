@@ -1,0 +1,156 @@
+<Window x:Class="DynamicIsland.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:DynamicIsland"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        Title="DynamicIsland"
+        WindowStyle="None"
+        AllowsTransparency="False"
+        Background="Transparent"
+        Topmost="True"
+        Width="200"
+        Height="40"
+        WindowStartupLocation="Manual"
+        ResizeMode="NoResize"
+        ShowInTaskbar="False"
+        MouseEnter="Window_MouseEnter"
+        MouseLeave="Window_MouseLeave"
+        MouseLeftButtonDown="Window_MouseLeftButtonDown"
+        KeyDown="Window_KeyDown">
+
+    <Window.ContextMenu>
+        <ContextMenu Opened="OnContextMenuOpened" Closed="OnContextMenuClosed">
+            <MenuItem Header="强制展开" Click="ForceExpand_Click"/>
+            <Separator/>
+            <MenuItem Header="设置…" Click="OpenSettings_Click"/>
+            <MenuItem Header="测试提醒" Click="TestAlert_Click"/>
+            <MenuItem Header="测试打断" Click="TestInterrupt_Click"/>
+            <MenuItem Header="测试动作提醒" Click="TestActionAlert_Click"/>
+            <MenuItem Header="测试摘要" Click="TestSummary_Click"/>
+            <Separator/>
+            <MenuItem Header="退出" Click="Exit_Click"/>
+        </ContextMenu>
+    </Window.ContextMenu>
+
+    <Border x:Name="GlassBorder"
+            CornerRadius="20"
+            BorderThickness="0.5"
+            Background="#BF1A1A1A"
+            BorderBrush="#33FFFFFF">
+        <Grid x:Name="RootGrid">
+            <!-- 液态玻璃自渲染层（仅 LiquidGlass 模式显示）：
+                 Hlsl 兼容路径：GlassCaptureH=Image 挂 H-pass + GlassCapture=Rectangle 挂 V-pass（VisualBrush 链式，ps_3_0）。
+                 GPU 路径：GlassD3DImage=Image，Source=D3DImage（D3D9 共享纹理 surface，SetBackBuffer 驱动）。 -->
+            <Image x:Name="GlassCaptureH" Stretch="Fill" Visibility="Collapsed"/>
+            <Rectangle x:Name="GlassCapture" Visibility="Collapsed"/>
+            <Image x:Name="GlassD3DImage" Stretch="Fill" Visibility="Collapsed"/>
+            <Border x:Name="GlassTint" Background="Transparent" Visibility="Collapsed"/>
+
+            <!-- 顶部高光（初始 Opacity 由 code-behind 的 HighlightBaseOpacity 设定，hover 时增亮） -->
+            <Border x:Name="TopHighlight"
+                    Height="16"
+                    VerticalAlignment="Top"
+                    Margin="8,2,8,0"
+                    CornerRadius="10">
+                <Border.Background>
+                    <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                        <GradientStop Color="#44FFFFFF" Offset="0"/>
+                        <GradientStop Color="#00FFFFFF" Offset="1"/>
+                    </LinearGradientBrush>
+                </Border.Background>
+            </Border>
+
+            <!-- 底部微光 -->
+            <Border x:Name="BottomHighlight"
+                    Height="10"
+                    VerticalAlignment="Bottom"
+                    Margin="8,0,8,2"
+                    CornerRadius="5">
+                <Border.Background>
+                    <LinearGradientBrush StartPoint="0,1" EndPoint="0,0">
+                        <GradientStop Color="#22FFFFFF" Offset="0"/>
+                        <GradientStop Color="#00FFFFFF" Offset="1"/>
+                    </LinearGradientBrush>
+                </Border.Background>
+            </Border>
+
+            <!-- 状态文字（收起/悬停态）。用 MarqueeText：长歌名超出可视宽时自动横向滚动。
+                 MaxWidth 由 code-behind 按当前状态宽动态设定，给溢出判定一个有限基准。 -->
+            <local:MarqueeText x:Name="StatusText"
+                       Text="🕒 --:--"
+                       Foreground="White"
+                       FontSize="14"
+                       FontWeight="SemiBold"
+                       HorizontalAlignment="Center"
+                       VerticalAlignment="Center" />
+
+            <!-- 内联消息面板（Collapsed/Hovered 时消息替换 StatusText）。
+                 水平排列：图标 + 标题/副标题 + 动作按钮。RenderTransform 给心跳脉冲。 -->
+            <StackPanel x:Name="InlineAlertPanel"
+                        Orientation="Horizontal"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center"
+                        Visibility="Collapsed"
+                        RenderTransformOrigin="0.5,0.5">
+                <StackPanel.RenderTransform>
+                    <ScaleTransform ScaleX="1" ScaleY="1"/>
+                </StackPanel.RenderTransform>
+                <!-- 图标 -->
+                <TextBlock x:Name="InlineAlertIcon"
+                           FontSize="18"
+                           VerticalAlignment="Center"
+                           Margin="0,0,8,0"/>
+                <!-- 标题 + 副标题 -->
+                <StackPanel VerticalAlignment="Center">
+                    <TextBlock x:Name="InlineAlertTitle"
+                               FontSize="14" FontWeight="SemiBold"
+                               TextTrimming="CharacterEllipsis"/>
+                    <TextBlock x:Name="InlineAlertSubtitle"
+                               FontSize="11" Opacity="0.6"
+                               TextTrimming="CharacterEllipsis"
+                               Visibility="Collapsed"/>
+                </StackPanel>
+                <!-- 动作按钮 -->
+                <Button x:Name="InlineAlertAction"
+                        FontSize="12" Padding="8,2" Margin="8,0,0,0"
+                        Cursor="Hand" VerticalAlignment="Center"
+                        Visibility="Collapsed"
+                        Click="InlineAlertAction_Click">
+                    <Button.Style>
+                        <Style TargetType="Button">
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="Button">
+                                        <Border x:Name="Bd"
+                                                Background="#1AFFFFFF"
+                                                CornerRadius="8"
+                                                Padding="{TemplateBinding Padding}">
+                                            <ContentPresenter HorizontalAlignment="Center"
+                                                              VerticalAlignment="Center"
+                                                              TextBlock.FontSize="12"/>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="Bd" Property="Background" Value="#33FFFFFF"/>
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                        </Style>
+                    </Button.Style>
+                </Button>
+            </StackPanel>
+
+            <!-- 展开态自定义视图宿主（仅当 source 提供 ExpandedView 时显示） -->
+            <ContentControl x:Name="ExpandedHost"
+                            Visibility="Collapsed"
+                            Focusable="False"
+                            HorizontalAlignment="Stretch"
+                            VerticalAlignment="Stretch"/>
+
+        </Grid>
+    </Border>
+</Window>

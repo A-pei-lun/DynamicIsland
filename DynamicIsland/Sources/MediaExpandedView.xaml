@@ -1,0 +1,222 @@
+<UserControl x:Class="DynamicIsland.Sources.MediaExpandedView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:DynamicIsland"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d"
+             Background="Transparent">
+
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+
+        <!-- 圆角无边框图标按钮，悬浮时浅高光 -->
+        <Style x:Key="IconButton" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="6,4"/>
+            <Setter Property="FontSize" Value="16"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="MinWidth" Value="32"/>
+            <Setter Property="MinHeight" Value="28"/>
+            <Setter Property="Focusable" Value="False"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bd"
+                                Background="{TemplateBinding Background}"
+                                CornerRadius="6"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="#33FFFFFF"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="#55FFFFFF"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </UserControl.Resources>
+
+    <Grid Margin="14,10,14,10">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- 上部：封面 + 标题/艺术家/进度 -->
+        <Grid Grid.Row="0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- 封面 —— 垂直居中，没 timeline 时不会贴顶。
+                 64 是 1080p 基准下的尺寸，整体随 RootGrid LayoutTransform 缩放。 -->
+            <Border Grid.Column="0"
+                    Width="64" Height="64"
+                    CornerRadius="6"
+                    ClipToBounds="True"
+                    Background="#22FFFFFF"
+                    VerticalAlignment="Center"
+                    Margin="0,0,10,0">
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding HasMedia}" Value="False">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+                <Image Source="{Binding Thumbnail}"
+                       Stretch="UniformToFill"/>
+            </Border>
+
+            <!-- 右侧信息 -->
+            <Grid Grid.Column="1">
+                <!-- 标题 + 艺人：
+                     有 timeline → 贴顶（给底部进度条留位置）
+                     没 timeline → 垂直居中（与封面对齐，平衡留白） -->
+                <StackPanel>
+                    <StackPanel.Style>
+                        <Style TargetType="StackPanel">
+                            <Setter Property="VerticalAlignment" Value="Top"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding HasTimeline}" Value="False">
+                                    <Setter Property="VerticalAlignment" Value="Center"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </StackPanel.Style>
+
+                    <!-- 展开态空间充裕：标题直接整行显示，超长自动换行（约 2 行高度限制，再多省略号）。
+                         不用跑马灯——展开态用户在仔细看，滚动反而不便阅读。
+                         WPF TextBlock 无 MaxLines，用 MaxHeight ≈ FontSize × 行距(~1.3) × 行数 近似。 -->
+                    <TextBlock Text="{Binding Title}"
+                               FontSize="14"
+                               FontWeight="SemiBold"
+                               Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                               TextWrapping="Wrap"
+                               MaxHeight="38"
+                               TextTrimming="CharacterEllipsis"/>
+
+                    <TextBlock Text="{Binding Artist}"
+                               FontSize="11"
+                               Margin="0,2,0,0"
+                               Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                               Opacity="0.7"
+                               TextWrapping="Wrap"
+                               MaxHeight="30"
+                               TextTrimming="CharacterEllipsis"/>
+                </StackPanel>
+
+                <!-- 进度条 + 时间：仅当播放器报了 timeline（网易云会整组隐藏） -->
+                <StackPanel VerticalAlignment="Bottom"
+                            Visibility="{Binding HasTimeline, Converter={StaticResource BoolToVis}}">
+                    <ProgressBar Height="3"
+                                 Maximum="1"
+                                 Value="{Binding Progress, Mode=OneWay}"
+                                 Background="#33FFFFFF"
+                                 Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                 BorderThickness="0"/>
+                    <Grid Margin="0,4,0,0">
+                        <TextBlock Text="{Binding PositionText}"
+                                   FontSize="10"
+                                   Opacity="0.6"
+                                   HorizontalAlignment="Left"/>
+                        <TextBlock Text="{Binding DurationText}"
+                                   FontSize="10"
+                                   Opacity="0.6"
+                                   HorizontalAlignment="Right"/>
+                    </Grid>
+                </StackPanel>
+            </Grid>
+        </Grid>
+
+        <!-- 下部：控制按钮 -->
+        <Grid Grid.Row="1" Margin="0,10,0,0">
+            <Grid.Style>
+                <Style TargetType="Grid">
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding HasMedia}" Value="False">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Grid.Style>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- 主控：上一首 / 播放暂停 / 下一首（居中） -->
+            <StackPanel Grid.Column="1"
+                        Orientation="Horizontal"
+                        HorizontalAlignment="Center">
+                <Button Style="{StaticResource IconButton}"
+                        Content="⏮"
+                        ToolTip="上一首"
+                        Command="{Binding PrevCommand}"/>
+                <Button Style="{StaticResource IconButton}"
+                        Content="{Binding PlayPauseIcon}"
+                        FontSize="18"
+                        ToolTip="播放/暂停"
+                        Command="{Binding PlayPauseCommand}"/>
+                <Button Style="{StaticResource IconButton}"
+                        Content="⏭"
+                        ToolTip="下一首"
+                        Command="{Binding NextCommand}"/>
+            </StackPanel>
+
+            <!-- 模式：循环 / 随机（右侧） -->
+            <StackPanel Grid.Column="2"
+                        Orientation="Horizontal"
+                        HorizontalAlignment="Right">
+                <Button Style="{StaticResource IconButton}"
+                        Content="{Binding RepeatIcon}"
+                        FontSize="14"
+                        Opacity="{Binding RepeatOpacity}"
+                        ToolTip="循环模式（关 / 列表 / 单曲）"
+                        Command="{Binding ToggleRepeatCommand}"/>
+                <Button Style="{StaticResource IconButton}"
+                        Content="🔀"
+                        FontSize="14"
+                        Opacity="{Binding ShuffleOpacity}"
+                        ToolTip="随机播放"
+                        Command="{Binding ToggleShuffleCommand}"/>
+            </StackPanel>
+        </Grid>
+
+        <!-- 空状态：无媒体会话时盖住封面空方块和无效控制按钮，居中显示占位。
+             不再用深色底（#BF1A1A1A）——无媒体时要"取消深色方框"，只留文字浮于材质上。
+             配合下方 thumbnail/controls 在 HasMedia=False 时 Collapsed，避免空方块与无效按钮残留。 -->
+        <Border Grid.RowSpan="2"
+                Background="Transparent"
+                HorizontalAlignment="Stretch"
+                VerticalAlignment="Stretch">
+            <Border.Style>
+                <Style TargetType="Border">
+                    <Setter Property="Visibility" Value="Collapsed"/>
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding HasMedia}" Value="False">
+                            <Setter Property="Visibility" Value="Visible"/>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Border.Style>
+            <TextBlock Text="🎵 暂无媒体播放"
+                       FontSize="13"
+                       Opacity="0.5"
+                       HorizontalAlignment="Center"
+                       VerticalAlignment="Center"/>
+        </Border>
+    </Grid>
+</UserControl>

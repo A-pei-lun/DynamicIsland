@@ -1,0 +1,38 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows10.0.26100.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <PlatformTarget>x64</PlatformTarget>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
+    <ApplicationIcon>AppIcon.ico</ApplicationIcon>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Content Include="AppIcon.ico" />
+  </ItemGroup>
+
+  <!-- HLSL 着色器 -> WPF ShaderEffect（pack URI，HlslGlassBackend 用）-->
+  <ItemGroup>
+    <Resource Include="LiquidGlass\Shaders\GaussianBlurH.ps" />
+    <Resource Include="LiquidGlass\Shaders\GaussianBlurV.ps" />
+  </ItemGroup>
+
+  <!-- D3D11 模糊管线用编译好的着色器（GpuGlassBackend 用，ps_4_0/vs_4_0）-->
+  <ItemGroup>
+    <Resource Include="LiquidGlass\Shaders\FullscreenQuadVS.cso" />
+    <Resource Include="LiquidGlass\Shaders\GaussianBlurH_D3D.cso" />
+    <Resource Include="LiquidGlass\Shaders\GaussianBlurV_D3D.cso" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.Management" Version="9.0.0" />
+    <PackageReference Include="Microsoft.Toolkit.Uwp.Notifications" Version="7.1.3" />
+    <PackageReference Include="Microsoft.Windows.CsWin32" Version="0.3.298" />
+  </ItemGroup>
+
+</Project>

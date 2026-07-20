@@ -1,0 +1,113 @@
+<UserControl x:Class="DynamicIsland.Sources.WeatherView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d"
+             Background="Transparent">
+
+    <UserControl.Resources>
+        <Style x:Key="DimLabel" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="Opacity" Value="0.5"/>
+            <Setter Property="Foreground" Value="White"/>
+        </Style>
+        <Style x:Key="ValueText" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Foreground" Value="White"/>
+        </Style>
+    </UserControl.Resources>
+
+    <!-- 紧凑布局：展开态可用高度 = ExpandedHeight(240) - 指示点(~15) - 系统条(~21) - Grid margin ≈ 180px。
+         内容须 ≤180 以免底部预报/位置行被裁切。emoji/温度/各 margin 均收紧。 -->
+    <Grid Margin="12,4">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Row 0: 当前天气 (emoji + 温度 + 描述) -->
+        <StackPanel Grid.Row="0" HorizontalAlignment="Center" Margin="0,2,0,3">
+            <TextBlock x:Name="WeatherEmoji"
+                       FontSize="32"
+                       HorizontalAlignment="Center"
+                       Text="☁️"/>
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                <TextBlock x:Name="Temperature"
+                           FontSize="28"
+                           FontWeight="Light"
+                           Foreground="White"
+                           Text="--°"/>
+                <TextBlock x:Name="Description"
+                           FontSize="13"
+                           Foreground="White"
+                           Opacity="0.7"
+                           VerticalAlignment="Bottom"
+                           Margin="8,0,0,4"
+                           Text="加载中…"/>
+            </StackPanel>
+        </StackPanel>
+
+        <!-- Row 1: 详情条 (体感 / 湿度 / 风速) -->
+        <StackPanel x:Name="DetailsRow"
+                    Grid.Row="1"
+                    Orientation="Horizontal"
+                    HorizontalAlignment="Center"
+                    Margin="0,0,0,3">
+            <Border Background="#1AFFFFFF" CornerRadius="8" Padding="7,2" Margin="2,0">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="体感 " Style="{StaticResource DimLabel}"/>
+                    <TextBlock x:Name="FeelsLike" Text="--°" Style="{StaticResource ValueText}"/>
+                </StackPanel>
+            </Border>
+            <Border Background="#1AFFFFFF" CornerRadius="8" Padding="7,2" Margin="2,0">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="湿度 " Style="{StaticResource DimLabel}"/>
+                    <TextBlock x:Name="Humidity" Text="--%" Style="{StaticResource ValueText}"/>
+                </StackPanel>
+            </Border>
+            <Border Background="#1AFFFFFF" CornerRadius="8" Padding="7,2" Margin="2,0">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="风速 " Style="{StaticResource DimLabel}"/>
+                    <TextBlock x:Name="WindSpeed" Text="--级" Style="{StaticResource ValueText}"/>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+
+        <!-- Row 2: 分割线 -->
+        <Border Grid.Row="2"
+                Height="0.5"
+                Background="#33FFFFFF"
+                Margin="20,1,20,2"/>
+
+        <!-- Row 3: 3 天预报 -->
+        <StackPanel x:Name="ForecastRow"
+                    Grid.Row="3"
+                    Orientation="Horizontal"
+                    HorizontalAlignment="Center">
+            <!-- 动态填充 -->
+        </StackPanel>
+
+        <!-- Row 4: 位置 + 刷新 -->
+        <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,2,0,0">
+            <TextBlock x:Name="LocationLabel"
+                       FontSize="10"
+                       Opacity="0.4"
+                       Foreground="White"
+                       Text="📍 定位中…"
+                       VerticalAlignment="Center"/>
+            <TextBlock x:Name="RefreshBtn"
+                       FontSize="10"
+                       Opacity="0.45"
+                       Foreground="White"
+                       Text="  🔄 刷新"
+                       Cursor="Hand"
+                       Margin="12,0,0,0"
+                       VerticalAlignment="Center"
+                       MouseLeftButtonUp="RefreshBtn_Click"/>
+        </StackPanel>
+    </Grid>
+</UserControl>
