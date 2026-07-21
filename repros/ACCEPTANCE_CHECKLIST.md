@@ -101,7 +101,9 @@
 | 检查项 | 结果 |
 |---|---|
 | 最终工作分支 | `repro/windows-graphics-interop` |
-| 最终 commit | `0df099a` 发布材料整改 |
+| M7 主体发布 commit | `0df099a` 发布材料整改 |
+| M7 审计整改 commit | `c3a4608` |
+| PR 合并 commit | 合并后以 GitHub PR 记录为准 |
 | 许可证 | 根目录 MIT LICENSE，Copyright (c) 2026 A-pei-lun |
 | 证据归档 | `repros/evidence/2026-07-21-ec73bd81/`（已脱敏） |
 | 调查报告更新 | `docs/WINDOWS_GRAPHICS_INTEROP_GREY_AREAS.md` 占位符已清除 |
