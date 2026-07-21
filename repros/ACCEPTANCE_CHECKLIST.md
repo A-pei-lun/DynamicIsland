@@ -17,7 +17,7 @@
 |---|---|---|---|
 | M0 | PASS | 2026-07-21 | 用户确认 M0 通过 |
 | M1 | PASS | 2026-07-21 | Frame received in 41ms, Surface != null, callback on thread pool thread |
-| M2 | NOT RUN | — | — |
+| M2 | PASS | 2026-07-21 | As<TInterop> + GetInterface + staging + Map + BMP all OK, BMP 2560x1600 visual confirmed |
 | M3 | NOT RUN | — | — |
 | M4 | NOT RUN | — | — |
 | M5 | NOT RUN | — | — |
@@ -46,4 +46,15 @@
 | 第一帧 | 41ms 内收到 |
 | frame.Surface != null | True |
 | 回调线程 | 4（非 UI 线程） |
+| 最终判定 | PASS |
+
+### M2
+
+| 检查项 | 结果 |
+|---|---|
+| As<TInterop> 现代路径 | 成功 |
+| GetInterface(ID3D11Texture2D) | hr=0x00000000 (S_OK) |
+| TextureDesc | 2560x1600, B8G8R8A8_UNORM |
+| CopyResource + Map | 成功 |
+| BMP 文件 | 16384054 bytes, 2560x1600, 内容正常 |
 | 最终判定 | PASS |
