@@ -21,6 +21,7 @@ using Windows.Win32.Graphics.Direct3D;
 using Windows.Win32.Graphics.Direct3D11;
 using Windows.Win32.Graphics.Dxgi;
 using WinRT;
+using WinRT.Interop;
 
 namespace WinGCSurfaceInterop;
 
@@ -379,7 +380,17 @@ internal static class Program
 
                     if (giHr >= 0 && texPtr != IntPtr.Zero)
                     {
-                        var tex = MarshalInspectable<ID3D11Texture2D>.FromAbi(texPtr);
+                        // GetInterface 返回的是原始 COM 指针，不是 WinRT 可检查对象
+                        // 从指针创建 ID3D11Texture2D COM 包装器
+                        // 方法: 先在 dev11 上创建 staging texture，再通过 CopyResource 从指针纹理复制
+                        Log($"  texPtr=0x{texPtr:X8}，尝试获取纹理...");
+
+                        // 由于无法直接包装 ID3D11Texture2D，采用间接方式：
+                        // 先通过 GetInterface 获取纹理指针后，用 dev11 的 OpenSharedResource 访问
+                        // 但 CaptureFrame 纹理不是共享资源，无法用 OpenSharedResource
+                        // 改用直接 COM 指针转换：通过 Marshal.GetObjectForIUnknown 创建 RCW，
+                        // 再用 CsWin32 的 ComWrappers 转换
+                        var tex = (ID3D11Texture2D)Marshal.GetObjectForIUnknown(texPtr);
                         Log("  ID3D11Texture2D 获取成功");
 
                         // ── 8. TextureDesc ────────────────────────────────
