@@ -43,7 +43,7 @@ dotnet run --project .\repros\WpfCompositionBackdrop\WpfCompositionBackdrop.cspr
 - 测试日期：2026-07-21
 - TFM：`net10.0-windows10.0.26100.0`
 - CsWin32：0.3.298
-- GPU：NVIDIA RTX 4060 Laptop
+- GPU：NVIDIA GeForce RTX 4070 Laptop GPU
 
 ## 结果文件
 

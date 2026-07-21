@@ -107,13 +107,11 @@ Download .NET:
 
 | 字段 | 值 |
 |---|---|
-| GPU 名称 | Todesk Virtual Display Adapter
-  - NVIDIA GeForce RTX 4070 Laptop GPU |
-| 驱动版本 | 16.44.2.509 (Todesk)
-  - 32.0.16.1074 (NVIDIA, 2026/7/2) |
-| 驱动日期 | 2023/4/24 (Todesk)
-  - 2026/7/2 (NVIDIA) |
-| 刷新率 | 当前刷新率 240 Hz；面板最高刷新率 240 Hz；动态刷新率范围 103–240 Hz |
+| GPU 名称 | NVIDIA GeForce RTX 4070 Laptop GPU |
+| 虚拟显示适配器 | Todesk Virtual Display Adapter |
+| 驱动版本 (NVIDIA) | 32.0.16.1074 (2026/7/2) |
+| 驱动版本 (Todesk) | 16.44.2.509 (2023/4/24) |
+| 刷新率 | 当前 240 Hz / 面板最高 240 Hz / 动态范围 103–240 Hz |
 | 分辨率 | 2560 × 1600 |
 | 缩放 | 150% |
 | HDR 状态 | ON |
