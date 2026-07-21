@@ -107,7 +107,7 @@
 | 许可证 | 根目录 MIT LICENSE，Copyright (c) 2026 A-pei-lun |
 | 证据归档 | `repros/evidence/2026-07-21-ec73bd81/`（已脱敏） |
 | 调查报告更新 | `docs/WINDOWS_GRAPHICS_INTEROP_GREY_AREAS.md` 占位符已清除 |
-| `DynamicIsland.slnx -c Release` | 0 errors, 0 warnings |
-| `Repros.slnx -c Release` | 0 errors, 0 warnings |
+| `DynamicIsland.slnx -c Release` | 0 errors, 2 warnings（既有 CS9191） |
+| `Repros.slnx -c Release` | 0 errors, 6 warnings（既有：CS9191 × 5、CS9123 × 1） |
 | 用户决定 | 允许发布 ✅ |
 | 最终判定 | PASS |
