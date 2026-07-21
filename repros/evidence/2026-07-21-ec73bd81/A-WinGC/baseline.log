@@ -1,0 +1,54 @@
+[15:12:10.974] --- 步骤 1: D3D11CreateDevice ---
+[15:12:11.144] D3D11CreateDevice hr=0x00000000 (S_OK)
+[15:12:11.146]   Feature level: D3D_FEATURE_LEVEL_11_0
+[15:12:11.146] --- Adapter 信息 ---
+[15:12:11.147] QI(IDXGIAdapter) hr=0x80004002 (FAILED)
+[15:12:11.147] --- 步骤 2: CreateDirect3D11DeviceFromDXGIDevice ---
+[15:12:11.147] QueryInterface(IDXGIDevice) hr=0x00000000 (S_OK)
+[15:12:11.147] CreateDirect3D11DeviceFromDXGIDevice hr=0x00000000 (S_OK)
+[15:12:11.165]   IDirect3DDevice 创建成功
+[15:12:11.165] --- 步骤 3: GraphicsCaptureItem (primary monitor) ---
+[15:12:11.166] WindowsCreateString hr=0x00000000 (S_OK)
+[15:12:11.167] RoGetActivationFactory hr=0x00000000 (S_OK)
+[15:12:11.167] QI IGraphicsCaptureItemInterop hr=0x00000000 (S_OK)
+[15:12:11.168]   Monitor handle: 0x00010001
+[15:12:11.195] CreateForMonitor hr=0x00000000 (S_OK)
+[15:12:11.199]   Capture item size: 2560x1600
+[15:12:11.199] --- 步骤 4: Frame pool + capture session ---
+[15:12:11.208] --- 步骤 5: 注册 FrameArrived + 启动 ---
+[15:12:11.208]   主线程 ID: 2
+[15:12:11.223]   Capture 已启动，等待第一帧 (10秒超时)...
+[15:12:11.234] --- 收到第一帧 ---
+[15:12:11.234]   Frame content size: 2560x1600
+[15:12:11.234]   frame.Surface != null: True
+[15:12:11.234]   回调线程 ID: 4 (主线程: 2)
+[15:12:11.234] --- 步骤 7: Surface interop (现代 C#/WinRT 路径) ---
+[15:12:11.234]   尝试 C#/WinRT As<TInterop>() 路径...
+[15:12:11.235]   As<IDirect3DDxgiInterfaceAccess>() 成功
+[15:12:11.235]   GetInterface(ID3D11Texture2D) hr=0x00000000 (S_OK)
+[15:12:11.235]   texPtr=0x{texPtr:X8}，尝试获取纹理...
+[15:12:11.235]   ID3D11Texture2D 获取成功
+[15:12:11.235] --- 步骤 8: ID3D11Texture2D::GetDesc ---
+[15:12:11.235]   Width: 2560, Height: 1600
+[15:12:11.236]   Format: DXGI_FORMAT_B8G8R8A8_UNORM
+[15:12:11.236]   MipLevels: 1, ArraySize: 1
+[15:12:11.236]   SampleDesc.Count: 1, Quality: 0
+[15:12:11.236]   Usage: D3D11_USAGE_DEFAULT
+[15:12:11.236]   BindFlags: D3D11_BIND_SHADER_RESOURCE, D3D11_BIND_RENDER_TARGET
+[15:12:11.237]   CPUAccessFlags: 0
+[15:12:11.237]   MiscFlags: D3D11_RESOURCE_MISC_SHARED, D3D11_RESOURCE_MISC_SHARED_NTHANDLE
+[15:12:11.237] --- 步骤 9: Staging texture + CopyResource + Map ---
+[15:12:11.238]   CreateTexture2D (staging) 成功
+[15:12:11.238]   CopyResource 完成
+[15:12:11.241]   Map 成功
+[15:12:11.241] --- 步骤 10: 写入 BMP ---
+[15:12:11.257]   BMP 写入完成: 2560x1600, 16384054 bytes
+[15:12:11.258]   Unmap 完成
+[15:12:11.258]   BMP 文件存在: True
+[15:12:11.258]   BMP 文件大小: 16384054 bytes
+[15:12:11.258]   BMP 预期最小: 16384054 bytes
+[15:12:11.258] --- 清理 ---
+[15:12:11.260]   Session disposed
+[15:12:11.260]   Pool disposed
+[15:12:11.260]   清理完成
+[15:12:11.260]   => 判定: PASS (所有自动条件通过)

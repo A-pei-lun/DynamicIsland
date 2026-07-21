@@ -18,9 +18,9 @@
 | M0 | PASS | 2026-07-21 | 用户确认 M0 通过 |
 | M1 | PASS | 2026-07-21 | Frame received in 41ms, Surface != null, callback on thread pool thread |
 | M2 | PASS | 2026-07-21 | As<TInterop> + GetInterface + staging + Map + BMP all OK, BMP 2560x1600 visual confirmed |
-| M3 | NOT RUN | — | — |
-| M4 | NOT RUN | — | — |
-| M5 | NOT RUN | — | — |
+| M3 | PASS | 2026-07-21 | 自动 PASS + 用户确认 12/12 色块同步、无黑屏无错色 |
+| M4 | PASS | 2026-07-21 | LUID 匹配、共享打开、12 次 Query 0ms、Readback 11/12（D3D9/D3D11 同步边界）、用户视觉确认一切正常 |
+| M5 | M5-C | 2026-07-21 | WPF 内容正常，红色不可见。DispatcherQueue 创建成功但 Compositor 构造函数无法识别（SDK 投影边界）。三种方案均无效。不进入 M6 |
 | M6 | NOT RUN | — | — |
 | M7 | NOT RUN | — | — |
 
@@ -57,4 +57,41 @@
 | TextureDesc | 2560x1600, B8G8R8A8_UNORM |
 | CopyResource + Map | 成功 |
 | BMP 文件 | 16384054 bytes, 2560x1600, 内容正常 |
+| 最终判定 | PASS |
+
+### M3
+
+| 检查项 | 结果 |
+|---|---|
+| Direct3DCreate9Ex | hr=0x00000000 (S_OK) |
+| CreateDeviceEx | hr=0x00000000 (S_OK) |
+| CreateTexture (256x256, A8R8G8B8, RENDERTARGET) | 成功 |
+| GetSurfaceLevel(0) | 成功 |
+| Surface desc | 256x256, D3DFMT_A8R8G8B8, D3DPOOL_DEFAULT |
+| D3DImage.SetBackBuffer | 成功 |
+| WPF rendering tier | 2 |
+| 颜色序列 12/12 | 全部完成 |
+| 用户视觉确认 | 文字正常、同步变化、无黑屏无错色 |
+| 最终判定 | PASS |
+
+### M4
+
+| 检查项 | 结果 |
+|---|---|
+| Direct3DCreate9Ex | hr=0x00000000 (S_OK) |
+| CreateDeviceEx | hr=0x00000000 (S_OK) |
+| CreateTexture (shared, 256x256, A8R8G8B8, RENDERTARGET) | 成功，handle=0xC0002942 |
+| GetSurfaceLevel(0) | 成功 |
+| D3D9 LUID | 0x00011ECB:0x00000000 |
+| D3D11 LUID | 0x00011ECB:0x00000000 |
+| LUID 匹配 | ✓ |
+| OpenSharedResource | 成功 |
+| CreateRenderTargetView | 成功 |
+| CreateQuery(D3D11_QUERY_EVENT) | 成功 |
+| 12 次 Query GetData | 全部 0ms 完成 |
+| D3D9 staging readback | 11/12 正确（1 次偏差：D3D9/D3D11 同步边界） |
+| D3DImage.SetBackBuffer | 成功 |
+| WPF rendering tier | 2 |
+| 颜色序列 12/12 | 全部完成 |
+| 用户视觉确认 | 一切正常 |
 | 最终判定 | PASS |

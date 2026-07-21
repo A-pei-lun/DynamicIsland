@@ -5,11 +5,11 @@
 
 ## 项目导航
 
-| 目录 | 目标 | 依赖 | 状态 |
+| 目录 | 目标 | 依赖 | 结果 |
 |---|---|---|---|
-| `WinGCSurfaceInterop/` | WinGC `Direct3D11CaptureFrame.Surface` → `ID3D11Texture2D` ABI 路径 | WinRT, D3D11, CsWinRT, CsWin32 | **M0 骨架** |
-| `D3D11D3D9D3DImage/` | D3D11 → D3D9Ex 共享纹理 → WPF D3DImage 稳定显示 | D3D11, D3D9Ex, WPF | **M0 骨架** |
-| `WpfCompositionBackdrop/` | WPF 窗口 + Windows Composition SpriteVisual + Backdrop/HostBackdrop | WPF, Comp, CsWin32 | **M0 骨架** |
+| `WinGCSurfaceInterop/` | WinGC `Direct3D11CaptureFrame.Surface` → `ID3D11Texture2D` ABI 路径 | WinRT, D3D11, CsWinRT, CsWin32 | **M1+M2 PASS** ✅ |
+| `D3D11D3D9D3DImage/` | D3D11 → D3D9Ex 共享纹理 → WPF D3DImage 稳定显示 | D3D11, D3D9Ex, WPF | **M3 PASS, M4 PASS** ✅ |
+| `WpfCompositionBackdrop/` | WPF 窗口 + Windows Composition SpriteVisual + Backdrop/HostBackdrop | WPF, Comp, CsWin32 | **M5-C** 🟡（DispatcherQueue 边界） |
 
 ## 判读表
 
@@ -31,3 +31,7 @@ powershell -ExecutionPolicy Bypass -File .\repros\Collect-Environment.ps1
 ```
 
 输出到 `repros/artifacts/environment/environment.md`。
+
+## 证据归档
+
+`repros/evidence/2026-07-21-ec73bd81/` 包含已脱敏的日志、BMP、截图和环境摘要。

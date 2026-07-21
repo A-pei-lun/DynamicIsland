@@ -1,0 +1,19 @@
+{
+  "Stage": "M4",
+  "Mode": "D3D11Query",
+  "Status": "PASS",
+  "ErrorMessage": null,
+  "ColorsCompleted": 12,
+  "TotalColors": 12,
+  "AllCompleted": true,
+  "EarlyClose": false,
+  "D3D9DeviceCreated": true,
+  "TextureCreated": true,
+  "SurfaceCreated": true,
+  "D3DImageSet": true,
+  "SharedHandleValid": true,
+  "D3D11DeviceCreated": true,
+  "OpenSharedResourceOk": true,
+  "RtvCreated": true,
+  "QueryCreated": true
+}
