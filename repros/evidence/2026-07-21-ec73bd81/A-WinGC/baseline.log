@@ -11,7 +11,7 @@
 [15:12:11.166] WindowsCreateString hr=0x00000000 (S_OK)
 [15:12:11.167] RoGetActivationFactory hr=0x00000000 (S_OK)
 [15:12:11.167] QI IGraphicsCaptureItemInterop hr=0x00000000 (S_OK)
-[15:12:11.168]   Monitor handle: 0x00010001
+[15:12:11.168]   Monitor handle: non-zero, value redacted
 [15:12:11.195] CreateForMonitor hr=0x00000000 (S_OK)
 [15:12:11.199]   Capture item size: 2560x1600
 [15:12:11.199] --- 步骤 4: Frame pool + capture session ---

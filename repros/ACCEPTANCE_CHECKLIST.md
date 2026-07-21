@@ -22,7 +22,7 @@
 | M4 | PASS | 2026-07-21 | LUID 匹配、共享打开、12 次 Query 0ms、Readback 11/12（D3D9/D3D11 同步边界）、用户视觉确认一切正常 |
 | M5 | M5-C | 2026-07-21 | WPF 内容正常，红色不可见。DispatcherQueue 创建成功但 Compositor 构造函数无法识别（SDK 投影边界）。三种方案均无效。不进入 M6 |
 | M6 | NOT RUN | — | — |
-| M7 | NOT RUN | — | — |
+| M7 | PASS | 2026-07-21 | 发布整理完成：README、LICENSE、证据归档、调查报告更新。用户确认允许发布 |
 
 ## 用户验收记录
 
@@ -80,10 +80,10 @@
 |---|---|
 | Direct3DCreate9Ex | hr=0x00000000 (S_OK) |
 | CreateDeviceEx | hr=0x00000000 (S_OK) |
-| CreateTexture (shared, 256x256, A8R8G8B8, RENDERTARGET) | 成功，handle=0xC0002942 |
+| CreateTexture (shared, 256x256, A8R8G8B8, RENDERTARGET) | 成功，handle=non-zero, value redacted |
 | GetSurfaceLevel(0) | 成功 |
-| D3D9 LUID | 0x00011ECB:0x00000000 |
-| D3D11 LUID | 0x00011ECB:0x00000000 |
+| D3D9 LUID | non-zero, value redacted |
+| D3D11 LUID | non-zero, value redacted |
 | LUID 匹配 | ✓ |
 | OpenSharedResource | 成功 |
 | CreateRenderTargetView | 成功 |
@@ -94,4 +94,18 @@
 | WPF rendering tier | 2 |
 | 颜色序列 12/12 | 全部完成 |
 | 用户视觉确认 | 一切正常 |
+| 最终判定 | PASS |
+
+### M7
+
+| 检查项 | 结果 |
+|---|---|
+| 最终工作分支 | `repro/windows-graphics-interop` |
+| 最终 commit | `0df099a` 发布材料整改 |
+| 许可证 | 根目录 MIT LICENSE，Copyright (c) 2026 A-pei-lun |
+| 证据归档 | `repros/evidence/2026-07-21-ec73bd81/`（已脱敏） |
+| 调查报告更新 | `docs/WINDOWS_GRAPHICS_INTEROP_GREY_AREAS.md` 占位符已清除 |
+| `DynamicIsland.slnx -c Release` | 0 errors, 0 warnings |
+| `Repros.slnx -c Release` | 0 errors, 0 warnings |
+| 用户决定 | 允许发布 ✅ |
 | 最终判定 | PASS |

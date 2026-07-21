@@ -413,7 +413,7 @@ QI(IDirect3DDxgiInterfaceAccess): S_OK (C#/WinRT As<TInterop>())
 GetInterface(IID_ID3D11Texture2D): S_OK
 ```
 
-Minimal reproduction: [link]
+Minimal reproduction: [WinGCSurfaceInterop](../repros/WinGCSurfaceInterop/)
 
 Questions:
 
@@ -456,15 +456,15 @@ Environment and resource descriptions:
 ```text
 OS build: 26100.8894
 GPU/driver: NVIDIA GeForce RTX 4070 Laptop GPU / 32.0.16.1074 (WDDM 3.2)
-D3D11 adapter LUID: [fill in — run minimal repro B]
-D3D9Ex adapter: [fill in — run minimal repro B]
-Texture creator: [D3D9Ex or D3D11 — to be determined]
-D3D11 texture desc: [fill in — run minimal repro B]
-D3D9 surface desc: [fill in — run minimal repro B]
-D3DImage.IsFrontBufferAvailable: [fill in — run minimal repro B]
+D3D11 adapter LUID: non-zero, value redacted
+D3D9Ex adapter: same as D3D11 (LUIDs matched)
+Texture creator: D3D9Ex (confirmed)
+D3D11 texture desc: 256x256, B8G8R8A8_UNORM (opened from D3D9 shared texture)
+D3D9 surface desc: 256x256, D3DFMT_A8R8G8B8, D3DPOOL_DEFAULT
+D3DImage.IsFrontBufferAvailable: Not collected
 ```
 
-Minimal reproduction: [link]
+Minimal reproduction: [D3D11D3D9D3DImage](../repros/D3D11D3D9D3DImage/)
 
 Questions:
 
@@ -501,7 +501,7 @@ Questions:
 2. Is attaching a `DesktopWindowTarget` to the same top-level HWND used by WPF supported when WPF controls must render above the Composition visual?
 3. If no such API is supported, is the documented alternative limited to system-controlled backdrops without a custom blur radius?
 
-Minimal WPF/Composition reproduction: [link]
+Minimal WPF/Composition reproduction: [WpfCompositionBackdrop](../repros/WpfCompositionBackdrop/)
 ````
 
 这个问题要以“是否存在受支持路径”来问，不要把私有 accent state 的失效描述成 Windows bug。

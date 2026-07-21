@@ -34,4 +34,4 @@ powershell -ExecutionPolicy Bypass -File .\repros\Collect-Environment.ps1
 
 ## 证据归档
 
-`repros/evidence/2026-07-21-ec73bd81/` 包含已脱敏的日志、BMP、截图和环境摘要。
+`repros/evidence/2026-07-21-ec73bd81/` 包含已脱敏的日志、脱敏 PNG 视觉证据、截图和环境摘要。
