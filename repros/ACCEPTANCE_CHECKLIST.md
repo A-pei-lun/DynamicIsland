@@ -15,8 +15,8 @@
 
 | 阶段 | 状态 | 日期 | 备注 |
 |---|---|---|---|
-| M0 | NOT RUN | — | — |
-| M1 | NOT RUN | — | — |
+| M0 | PASS | 2026-07-21 | 用户确认 M0 通过 |
+| M1 | PASS | 2026-07-21 | Frame received in 41ms, Surface != null, callback on thread pool thread |
 | M2 | NOT RUN | — | — |
 | M3 | NOT RUN | — | — |
 | M4 | NOT RUN | — | — |
@@ -30,8 +30,20 @@
 
 | 检查项 | 结果 |
 |---|---|
-| 个人信息泄露 | — |
-| Windows build 字段 | — |
-| .NET SDK/Host 字段 | — |
-| 刷新率字段 | — |
-| 主项目基线构建 | 0 errors, 4 warnings |
+| 个人信息泄露 | 无泄露 |
+| Windows build 字段 | 已确认 |
+| .NET SDK/Host 字段 | 已确认区分 |
+| 刷新率字段 | 用户已自行填写确认 |
+| 主项目基线构建 | 0 errors, 4 warnings（既有） |
+
+### M1
+
+| 检查项 | 结果 |
+|---|---|
+| D3D11CreateDevice | S_OK |
+| CreateDirect3D11DeviceFromDXGIDevice | S_OK |
+| GraphicsCaptureItem | 2560x1600 |
+| 第一帧 | 41ms 内收到 |
+| frame.Surface != null | True |
+| 回调线程 | 4（非 UI 线程） |
+| 最终判定 | PASS |

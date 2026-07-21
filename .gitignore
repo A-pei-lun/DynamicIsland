@@ -4,6 +4,7 @@
 *.suo
 *.user
 *.userosscache
+*_wpftmp.*
 *.sln.docstates
 
 # ─── Build ─────────────────────────────────────────────

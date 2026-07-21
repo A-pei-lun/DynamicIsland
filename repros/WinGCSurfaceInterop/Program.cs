@@ -1,9 +1,13 @@
-// WinGCSurfaceInterop — M1: 只建立"收到第一帧"的基线
-// 本阶段不执行任何 surface QI，只验证 WinGC 管道能否收到帧。
+// WinGCSurfaceInterop — M2: 现代 C#/WinRT interop + 可视化回读
+//
+// 流程:
+//   M1 基线（收到帧）→ frame.Surface → As<TInterop> → IDirect3DDxgiInterfaceAccess
+//   → GetInterface(ID3D11Texture2D) → GetDesc → staging → Map → BMP
 //
 // 输出:
 //   repros/artifacts/A-WinGC/baseline.log
 //   repros/artifacts/A-WinGC/result.json
+//   repros/artifacts/A-WinGC/frame.bmp
 
 using System.Diagnostics;
 using System.Runtime.InteropServices;
@@ -22,7 +26,17 @@ namespace WinGCSurfaceInterop;
 
 internal static class Program
 {
-    // ─── WinGC interop (手写 P/Invoke，不用 CsWin32) ──────────────────────
+    // ─── IDirect3DDxgiInterfaceAccess ─────────────────────────────────────
+    // IID: A9B3D012-3DF2-4EE3-B8D1-8695F457D3C1
+    [ComImport, Guid("A9B3D012-3DF2-4EE3-B8D1-8695F457D3C1"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    interface IDirect3DDxgiInterfaceAccess
+    {
+        [PreserveSig] int GetInterface(ref Guid iid, out IntPtr p);
+    }
+
+    static readonly Guid IID_ID3D11Texture2D = typeof(ID3D11Texture2D).GUID;
+
+    // ─── WinGC interop (手写 P/Invoke) ────────────────────────────────────
 
     [DllImport("user32.dll")]
     static extern IntPtr MonitorFromWindow(IntPtr hwnd, uint flags);
@@ -59,6 +73,7 @@ internal static class Program
 
     static readonly string LogPath = Path.Combine(ArtifactsDir, "baseline.log");
     static readonly string JsonPath = Path.Combine(ArtifactsDir, "result.json");
+    static readonly string BmpPath = Path.Combine(ArtifactsDir, "frame.bmp");
 
     // ─── 同步 ────────────────────────────────────────────────────────────
 
@@ -66,6 +81,10 @@ internal static class Program
     static Direct3D11CaptureFrame? CapturedFrame;
     static int CallbackThreadId = -1;
     static long FrameArrivedTicks;
+
+    // ─── 命令行参数 ──────────────────────────────────────────────────────
+
+    static bool LegacyComparisonMode = false;
 
     // ─── 日志 ────────────────────────────────────────────────────────────
 
@@ -90,9 +109,12 @@ internal static class Program
 
     // ─── 主流程 ──────────────────────────────────────────────────────────
 
-    static async Task<int> Main()
+    static async Task<int> Main(string[] args)
     {
-        // 确保输出目录存在
+        LegacyComparisonMode = args.Contains("--legacy-comparison");
+        if (LegacyComparisonMode)
+            Log("!!! 使用 --legacy-comparison 模式（对照观察，不参与 PASS 判定）");
+
         Directory.CreateDirectory(ArtifactsDir);
 
         var result = new ResultData();
@@ -106,7 +128,6 @@ internal static class Program
         {
             Log($"未处理的异常: {ex.GetType().Name}: {ex.Message}");
             Log($"  HResult=0x{ex.HResult:X8}");
-            Log($"  {ex.StackTrace}");
             result.Status = "FAIL";
             result.ErrorMessage = $"{ex.GetType().Name}: {ex.Message}";
             result.ErrorHResult = $"0x{ex.HResult:X8}";
@@ -115,7 +136,6 @@ internal static class Program
         sw.Stop();
         result.ElapsedMs = sw.ElapsedMilliseconds;
 
-        // 写入结果
         WriteResults(result);
 
         Log($"完成。耗时 {result.ElapsedMs} ms，状态: {result.Status}");
@@ -130,7 +150,7 @@ internal static class Program
             null,
             D3D_DRIVER_TYPE.D3D_DRIVER_TYPE_HARDWARE,
             default,
-            default(D3D11_CREATE_DEVICE_FLAG),
+            D3D11_CREATE_DEVICE_FLAG.D3D11_CREATE_DEVICE_DEBUG,
             ReadOnlySpan<D3D_FEATURE_LEVEL>.Empty,
             7,
             out ID3D11Device dev11,
@@ -142,27 +162,66 @@ internal static class Program
 
         if (hr < 0)
         {
-            result.Status = "FAIL";
-            result.ErrorMessage = "D3D11CreateDevice failed";
-            return;
+            // 如果 Debug layer 不可用，回退到无 debug 标志重试
+            Log("  Debug layer 可能不可用，回退到无 debug 标志...");
+            hr = PInvoke.D3D11CreateDevice(
+                null,
+                D3D_DRIVER_TYPE.D3D_DRIVER_TYPE_HARDWARE,
+                default,
+                default(D3D11_CREATE_DEVICE_FLAG),
+                ReadOnlySpan<D3D_FEATURE_LEVEL>.Empty,
+                7,
+                out dev11,
+                out featureLevel,
+                out ctx);
+            LogHr("D3D11CreateDevice (no debug)", hr);
+            if (hr < 0)
+            {
+                result.Status = "FAIL";
+                result.ErrorMessage = "D3D11CreateDevice failed";
+                return;
+            }
         }
 
         Log($"  Feature level: {featureLevel}");
+
+        // ── 获取 adapter 信息 ─────────────────────────────────────────────
+        Log("--- Adapter 信息 ---");
+        try
+        {
+            var dxgiDevice = dev11.As<IDXGIDevice>();
+            IntPtr dxgiDevicePtr = Marshal.GetIUnknownForObject(dxgiDevice);
+            Guid iidAdapter = typeof(IDXGIAdapter).GUID;
+            int qir = Marshal.QueryInterface(dxgiDevicePtr, ref iidAdapter, out IntPtr adapterPtr);
+            LogHr("QI(IDXGIAdapter)", qir);
+            Marshal.Release(dxgiDevicePtr);
+
+            if (qir >= 0)
+            {
+                // 简化：只记录 adapter 指针，不深入查询 desc（避免 CsWin32 签名问题）
+                Log($"  Adapter QI 成功 (ptr=0x{adapterPtr:X8})");
+                Marshal.Release(adapterPtr);
+            }
+        }
+        catch (Exception ex)
+        {
+            Log($"  Adapter 信息获取失败: {ex.Message}");
+        }
 
         // ── 2. IDXGIDevice → WinRT IDirect3DDevice ───────────────────────
         Log("--- 步骤 2: CreateDirect3D11DeviceFromDXGIDevice ---");
 
         IntPtr devUnk = Marshal.GetIUnknownForObject(dev11);
         Guid iidDxgi = typeof(IDXGIDevice).GUID;
-        int qir = Marshal.QueryInterface(devUnk, ref iidDxgi, out IntPtr dxgiPtr);
-        LogHr("QueryInterface(IDXGIDevice)", qir);
+        int qirDxgi = Marshal.QueryInterface(devUnk, ref iidDxgi, out IntPtr dxgiPtr);
+        LogHr("QueryInterface(IDXGIDevice)", qirDxgi);
         Marshal.Release(devUnk);
 
-        if (qir < 0)
+        if (qirDxgi < 0)
         {
             result.Status = "FAIL";
             result.ErrorMessage = "QI for IDXGIDevice failed";
-            result.DxgiDeviceQiHr = $"0x{qir:X8}";
+            result.DxgiDeviceQiHr = $"0x{qirDxgi:X8}";
             Marshal.Release(dxgiPtr);
             return;
         }
@@ -185,6 +244,8 @@ internal static class Program
         // ── 3. GraphicsCaptureItem for primary monitor ───────────────────
         Log("--- 步骤 3: GraphicsCaptureItem (primary monitor) ---");
 
+        GraphicsCaptureItem? item = null;
+        IntPtr itemPtr = IntPtr.Zero;
         try
         {
             string clsid = "Windows.Graphics.Capture.GraphicsCaptureItem";
@@ -228,7 +289,7 @@ internal static class Program
             Log($"  Monitor handle: 0x{hmon:X8}");
 
             Guid iidItem = IID_IGraphicsCaptureItem;
-            int createItemHr = interop.CreateForMonitor(hmon, ref iidItem, out IntPtr itemPtr);
+            int createItemHr = interop.CreateForMonitor(hmon, ref iidItem, out itemPtr);
             LogHr("CreateForMonitor", createItemHr);
 
             Marshal.Release(interopPtr);
@@ -240,114 +301,292 @@ internal static class Program
                 return;
             }
 
-            GraphicsCaptureItem item = GraphicsCaptureItem.FromAbi(itemPtr);
+            item = GraphicsCaptureItem.FromAbi(itemPtr);
             var itemSize = item.Size;
             Log($"  Capture item size: {itemSize.Width}x{itemSize.Height}");
             result.CaptureItemWidth = itemSize.Width;
             result.CaptureItemHeight = itemSize.Height;
-
-            // ── 4. Frame pool + capture session ──────────────────────────
-            Log("--- 步骤 4: Frame pool + capture session ---");
-
-            var pool = Direct3D11CaptureFramePool.CreateFreeThreaded(
-                d3dDev, DirectXPixelFormat.B8G8R8A8UIntNormalized, 2, itemSize);
-
-            var session = pool.CreateCaptureSession(item);
-
-            // ── 5. FrameArrived ──────────────────────────────────────────
-            Log("--- 步骤 5: 注册 FrameArrived + 启动 ---");
-
-            int mainThreadId = Environment.CurrentManagedThreadId;
-            Log($"  主线程 ID: {mainThreadId}");
-
-            pool.FrameArrived += OnFrameArrived;
-
-            session.StartCapture();
-            Log("  Capture 已启动，等待第一帧 (10秒超时)...");
-
-            // ── 6. 等待第一帧（10秒超时）─────────────────────────────────
-            bool gotFrame = FrameReceived.Wait(TimeSpan.FromSeconds(10));
-
-            if (gotFrame && CapturedFrame != null)
-            {
-                var frame = CapturedFrame;
-                var frameSize = frame.ContentSize;
-                var surface = frame.Surface;
-
-                Log($"--- 收到第一帧 ---");
-                Log($"  Frame content size: {frameSize.Width}x{frameSize.Height}");
-                Log($"  frame.Surface != null: {surface != null}");
-                Log($"  Frame arrived ticks: {FrameArrivedTicks}");
-                Log($"  回调线程 ID: {CallbackThreadId} (主线程: {mainThreadId})");
-
-                result.FrameReceived = true;
-                result.FrameWidth = frameSize.Width;
-                result.FrameHeight = frameSize.Height;
-                result.SurfaceNotNull = surface != null;
-                result.CallbackThreadId = CallbackThreadId;
-                result.MainThreadId = mainThreadId;
-                result.FrameArrivedTicks = FrameArrivedTicks;
-
-                frame.Dispose();
-                CapturedFrame = null;
-            }
-            else
-            {
-                Log($"  超时或未收到帧: gotFrame={gotFrame}, CapturedFrame={CapturedFrame != null}");
-                result.FrameReceived = false;
-            }
-
-            // ── 7. 清理（逆序释放）───────────────────────────────────────
-            Log("--- 清理 ---");
-
-            session.Dispose();
-            Log("  Session disposed");
-            pool.FrameArrived -= OnFrameArrived;
-            pool.Dispose();
-            Log("  Pool disposed");
-
-            // WinRT objects — 释放引用
-            Marshal.Release(itemPtr);
-            // inspectablePtr 已被 FromAbi 接管引用，不需要额外释放
-            // 在 CsWin32 中，COM 包装器通过 ComWrappers 管理，GC 会处理
-            // 但为了确定性释放，尝试通过 IDisposable 释放
-            if (ctx is IDisposable dispCtx) dispCtx.Dispose();
-            if (dev11 is IDisposable dispDev) dispDev.Dispose();
-
-            Log("  清理完成");
-
-            // ── 8. 判定 ──────────────────────────────────────────────────
-            if (result.FrameReceived && result.SurfaceNotNull)
-            {
-                Log("  => 判定: PASS (frame != null && frame.Surface != null)");
-                result.Status = "PASS";
-            }
-            else if (result.FrameReceived && !result.SurfaceNotNull)
-            {
-                Log("  => 判定: FAIL (frame != null but frame.Surface == null)");
-                result.Status = "FAIL";
-                result.ErrorMessage = "frame.Surface is null";
-            }
-            else
-            {
-                Log("  => 判定: INCONCLUSIVE (未收到帧)");
-                result.Status = "INCONCLUSIVE";
-                result.ErrorMessage = "No frame received within 10s timeout";
-            }
         }
         catch (Exception ex)
         {
-            Log($"  WinGC 异常: {ex.GetType().Name}: {ex.Message}");
-            Log($"  HResult=0x{ex.HResult:X8}");
+            Log($"  GraphicsCaptureItem 异常: {ex.GetType().Name}: {ex.Message}");
             result.Status = "FAIL";
-            result.ErrorMessage = $"{ex.GetType().Name}: {ex.Message}";
-            result.ErrorHResult = $"0x{ex.HResult:X8}";
+            result.ErrorMessage = $"GraphicsCaptureItem: {ex.Message}";
+            return;
+        }
+
+        // ── 4. Frame pool + capture session ──────────────────────────────
+        Log("--- 步骤 4: Frame pool + capture session ---");
+
+        var pool = Direct3D11CaptureFramePool.CreateFreeThreaded(
+            d3dDev, DirectXPixelFormat.B8G8R8A8UIntNormalized, 2, item.Size);
+
+        var session = pool.CreateCaptureSession(item);
+
+        // ── 5. FrameArrived ──────────────────────────────────────────────
+        Log("--- 步骤 5: 注册 FrameArrived + 启动 ---");
+
+        int mainThreadId = Environment.CurrentManagedThreadId;
+        Log($"  主线程 ID: {mainThreadId}");
+
+        pool.FrameArrived += OnFrameArrived;
+
+        session.StartCapture();
+        Log("  Capture 已启动，等待第一帧 (10秒超时)...");
+
+        // ── 6. 等待第一帧（10秒超时）─────────────────────────────────────
+        bool gotFrame = FrameReceived.Wait(TimeSpan.FromSeconds(10));
+
+        // 取消 FrameArrived 订阅，防止后续帧干扰
+        pool.FrameArrived -= OnFrameArrived;
+
+        if (gotFrame && CapturedFrame != null)
+        {
+            var frame = CapturedFrame;
+            var frameSize = frame.ContentSize;
+            var surface = frame.Surface;
+
+            Log($"--- 收到第一帧 ---");
+            Log($"  Frame content size: {frameSize.Width}x{frameSize.Height}");
+            Log($"  frame.Surface != null: {surface != null}");
+            Log($"  回调线程 ID: {CallbackThreadId} (主线程: {mainThreadId})");
+
+            result.FrameReceived = true;
+            result.FrameWidth = frameSize.Width;
+            result.FrameHeight = frameSize.Height;
+            result.SurfaceNotNull = surface != null;
+            result.CallbackThreadId = CallbackThreadId;
+
+            if (surface != null)
+            {
+                // ── 7. Surface interop: 现代 C#/WinRT 路径 ────────────────
+                Log("--- 步骤 7: Surface interop (现代 C#/WinRT 路径) ---");
+
+                try
+                {
+                    // 默认路径：使用 C#/WinRT As<TInterop>()
+                    Log("  尝试 C#/WinRT As<TInterop>() 路径...");
+                    var access = surface.As<IDirect3DDxgiInterfaceAccess>();
+                    Log("  As<IDirect3DDxgiInterfaceAccess>() 成功");
+
+                    result.AsInteropSuccess = true;
+
+                    // 调用 GetInterface(ID3D11Texture2D)
+                    Guid iidLocal = IID_ID3D11Texture2D;
+                    int giHr = access.GetInterface(ref iidLocal, out IntPtr texPtr);
+                    LogHr("  GetInterface(ID3D11Texture2D)", giHr);
+                    result.GetInterfaceHr = $"0x{giHr:X8}";
+
+                    if (giHr >= 0 && texPtr != IntPtr.Zero)
+                    {
+                        var tex = MarshalInspectable<ID3D11Texture2D>.FromAbi(texPtr);
+                        Log("  ID3D11Texture2D 获取成功");
+
+                        // ── 8. TextureDesc ────────────────────────────────
+                        Log("--- 步骤 8: ID3D11Texture2D::GetDesc ---");
+                        unsafe
+                        {
+                            D3D11_TEXTURE2D_DESC desc;
+                            tex.GetDesc(&desc);
+
+                            Log($"  Width: {desc.Width}, Height: {desc.Height}");
+                            Log($"  Format: {desc.Format}");
+                            Log($"  MipLevels: {desc.MipLevels}, ArraySize: {desc.ArraySize}");
+                            Log($"  SampleDesc.Count: {desc.SampleDesc.Count}, Quality: {desc.SampleDesc.Quality}");
+                            Log($"  Usage: {desc.Usage}");
+                            Log($"  BindFlags: {desc.BindFlags}");
+                            Log($"  CPUAccessFlags: {desc.CPUAccessFlags}");
+                            Log($"  MiscFlags: {desc.MiscFlags}");
+
+                            result.TextureWidth = (int)desc.Width;
+                            result.TextureHeight = (int)desc.Height;
+                            result.TextureFormat = desc.Format.ToString();
+                            result.TextureMipLevels = (int)desc.MipLevels;
+                            result.TextureArraySize = (int)desc.ArraySize;
+
+                            // ── 9. Staging + CopyResource + Map ────────────
+                            Log("--- 步骤 9: Staging texture + CopyResource + Map ---");
+
+                            D3D11_TEXTURE2D_DESC stagingDesc = desc;
+                            stagingDesc.Usage = D3D11_USAGE.D3D11_USAGE_STAGING;
+                            stagingDesc.BindFlags = 0;
+                            stagingDesc.CPUAccessFlags = (D3D11_CPU_ACCESS_FLAG)0x20000; // D3D11_CPU_ACCESS_FLAG_READ
+                            stagingDesc.MiscFlags = 0;
+                            stagingDesc.MipLevels = 1;
+                            stagingDesc.ArraySize = 1;
+
+                            // 创建 staging texture (CsWin32: void CreateTexture2D(desc, null, out tex))
+                            ID3D11Texture2D stagingTex = default!;
+                            try
+                            {
+                                dev11.CreateTexture2D(stagingDesc, null, out stagingTex);
+                                Log("  CreateTexture2D (staging) 成功");
+
+                                // CopyResource
+                                ctx.CopyResource(stagingTex, tex);
+                                Log("  CopyResource 完成");
+
+                                // Map (CsWin32 方法返回 void，失败时抛 COMException)
+                                D3D11_MAPPED_SUBRESOURCE mapped;
+                                uint subresource = 0;
+                                ctx.Map(stagingTex, subresource, D3D11_MAP.D3D11_MAP_READ, 0, out mapped);
+                                Log("  Map 成功");
+
+                                result.MapSuccess = true;
+
+                                // ── 10. 写 BMP ──────────────────
+                                Log("--- 步骤 10: 写入 BMP ---");
+                                unsafe
+                                {
+                                    WriteBmp(
+                                        (IntPtr)mapped.pData,
+                                        (int)desc.Width,
+                                        (int)desc.Height,
+                                        (int)mapped.RowPitch);
+                                }
+
+                                ctx.Unmap(stagingTex, subresource);
+                                Log("  Unmap 完成");
+
+                                // 检查 BMP
+                                FileInfo fi = new(BmpPath);
+                                result.BmpExists = fi.Exists;
+                                result.BmpSize = fi.Exists ? fi.Length : 0;
+                                Log($"  BMP 文件存在: {fi.Exists}");
+                                Log($"  BMP 文件大小: {fi.Length} bytes");
+                                Log($"  BMP 预期最小: {54 + (int)desc.Width * (int)desc.Height * 4} bytes");
+                            }
+                            catch (Exception exStaging)
+                            {
+                                Log($"  Staging 相关异常: {exStaging.GetType().Name}: {exStaging.Message}");
+                                Log($"  HResult=0x{exStaging.HResult:X8}");
+                                result.ErrorMessage = $"Staging: {exStaging.GetType().Name}: {exStaging.Message}";
+                                result.ErrorHResult = $"0x{exStaging.HResult:X8}";
+                                result.MapSuccess = false;
+                            }
+                            finally
+                            {
+                                if (stagingTex != null && stagingTex is IDisposable dispStaging)
+                                    dispStaging.Dispose();
+                            }
+                        }
+
+                        // 释放 COM 引用
+                        if (tex is IDisposable dispTex) dispTex.Dispose();
+                        Marshal.Release(texPtr);
+                    }
+                    else
+                    {
+                        result.GetInterfaceHr = $"0x{giHr:X8}";
+                        result.ErrorMessage = $"GetInterface(ID3D11Texture2D) failed: hr=0x{giHr:X8}";
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Log($"  Surface interop 异常: {ex.GetType().Name}: {ex.Message}");
+                    Log($"  HResult=0x{ex.HResult:X8}");
+                    result.AsInteropSuccess = false;
+                    result.ErrorMessage = $"As<TInterop> failed: {ex.GetType().Name}: {ex.Message}";
+                    result.ErrorHResult = $"0x{ex.HResult:X8}";
+                }
+
+                // ── 11. (可选) 旧式 Marshal 对照 ──────────────────────────
+                if (LegacyComparisonMode)
+                {
+                    Log("--- 步骤 11 (对照): 旧式 Marshal.GetIUnknownForObject ---");
+                    try
+                    {
+                        IntPtr surfUnk = Marshal.GetIUnknownForObject(surface);
+                        Log($"  Marshal.GetIUnknownForObject -> 0x{surfUnk:X8}");
+                        // 这只做对照，不用于 PASS 判定
+                        Marshal.Release(surfUnk);
+                    }
+                    catch (Exception ex)
+                    {
+                        Log($"  Legacy Marshal 对照异常: {ex.Message}");
+                    }
+                }
+            }
+
+            frame.Dispose();
+            CapturedFrame = null;
+        }
+        else
+        {
+            Log($"  超时或未收到帧: gotFrame={gotFrame}, CapturedFrame={CapturedFrame != null}");
+            result.FrameReceived = false;
+        }
+
+        // ── 清理 ──────────────────────────────────────────────────────────
+        Log("--- 清理 ---");
+
+        session.Dispose();
+        Log("  Session disposed");
+        pool.Dispose();
+        Log("  Pool disposed");
+
+        if (itemPtr != IntPtr.Zero)
+            Marshal.Release(itemPtr);
+
+        if (ctx is IDisposable dispCtx) dispCtx.Dispose();
+        if (dev11 is IDisposable dispDev) dispDev.Dispose();
+
+        Log("  清理完成");
+
+        // ── 判定 ──────────────────────────────────────────────────────────
+        if (LegacyComparisonMode)
+        {
+            Log("  => 判定: --legacy-comparison 模式，不参与 PASS 判定");
+            result.Status = "INCONCLUSIVE";
+            return;
+        }
+
+        if (!result.FrameReceived)
+        {
+            result.Status = "INCONCLUSIVE";
+            result.ErrorMessage = "No frame received within 10s timeout";
+        }
+        else if (!result.SurfaceNotNull)
+        {
+            result.Status = "FAIL";
+            result.ErrorMessage = "frame.Surface is null";
+        }
+        else if (!result.AsInteropSuccess)
+        {
+            result.Status = "FAIL";
+            result.ErrorMessage = result.ErrorMessage ?? "As<TInterop> failed";
+        }
+        else if (!result.MapSuccess)
+        {
+            result.Status = "FAIL";
+            result.ErrorMessage = result.ErrorMessage ?? "Map failed";
+        }
+        else if (!result.BmpExists)
+        {
+            result.Status = "FAIL";
+            result.ErrorMessage = "BMP file not created";
+        }
+        else
+        {
+            bool allPass = result.AsInteropSuccess && result.GetInterfaceHr != null
+                && result.TextureWidth > 0 && result.TextureHeight > 0
+                && result.MapSuccess && result.BmpExists && result.BmpSize > 54;
+
+            if (allPass)
+            {
+                Log("  => 判定: PASS (所有自动条件通过)");
+                result.Status = "PASS";
+            }
+            else
+            {
+                Log("  => 判定: FAIL (部分自动条件未通过)");
+                result.Status = "FAIL";
+            }
         }
     }
 
     static void OnFrameArrived(Direct3D11CaptureFramePool sender, object args)
     {
-        // 只取第一帧
         if (CapturedFrame != null || FrameReceived.IsSet)
             return;
 
@@ -368,15 +607,64 @@ internal static class Program
         }
     }
 
+    // ─── BMP 写入 ─────────────────────────────────────────────────────────
+
+    static unsafe void WriteBmp(IntPtr data, int width, int height, int rowPitch)
+    {
+        // BMP 文件结构: 14-byte header + 40-byte DIB header + pixel data
+        // 32-bit BGRA, no compression
+        int bpp = 4;
+        int stride = width * bpp;
+        // BMP 行对齐到 4 字节
+        int bmpStride = (stride + 3) & ~3;
+        int pixelDataSize = bmpStride * height;
+        int fileSize = 14 + 40 + pixelDataSize;
+
+        using var fs = new FileStream(BmpPath, FileMode.Create, FileAccess.Write);
+        using var bw = new BinaryWriter(fs);
+
+        // BITMAPFILEHEADER (14 bytes)
+        bw.Write((byte)'B');
+        bw.Write((byte)'M');
+        bw.Write(fileSize);          // bfSize
+        bw.Write((ushort)0);         // bfReserved1
+        bw.Write((ushort)0);         // bfReserved2
+        bw.Write(14 + 40);           // bfOffBits
+
+        // BITMAPINFOHEADER (40 bytes)
+        bw.Write(40);                // biSize
+        bw.Write(width);
+        bw.Write(height);            // 正数 = 左下角原点
+        bw.Write((ushort)1);         // biPlanes
+        bw.Write((ushort)(bpp * 8)); // biBitCount
+        bw.Write(0);                 // biCompression (BI_RGB)
+        bw.Write(pixelDataSize);     // biSizeImage
+        bw.Write(0);                 // biXPelsPerMeter
+        bw.Write(0);                 // biYPelsPerMeter
+        bw.Write(0);                 // biClrUsed
+        bw.Write(0);                 // biClrImportant
+
+        // Pixel data: bottom-up, BGR format
+        // 从源数据复制，处理行对齐
+        byte[] row = new byte[bmpStride];
+        for (int y = height - 1; y >= 0; y--)
+        {
+            IntPtr srcRow = data + (y * rowPitch);
+            Marshal.Copy(srcRow, row, 0, stride);
+            // 剩余字节（对齐填充）保持 0
+            bw.Write(row, 0, bmpStride);
+        }
+
+        Log($"  BMP 写入完成: {width}x{height}, {fileSize} bytes");
+    }
+
     // ─── 结果输出 ────────────────────────────────────────────────────────
 
     static void WriteResults(ResultData result)
     {
-        // 写入日志
         File.WriteAllText(LogPath, string.Join(Environment.NewLine, LogLines));
         Console.WriteLine($"\n日志已写入: {LogPath}");
 
-        // 写入 JSON
         var options = new JsonSerializerOptions { WriteIndented = true };
         var json = JsonSerializer.Serialize(result, options);
         File.WriteAllText(JsonPath, json);
@@ -387,7 +675,7 @@ internal static class Program
 
     class ResultData
     {
-        public string Stage { get; set; } = "M1";
+        public string Stage { get; set; } = "M2";
         public string Status { get; set; } = "NOT RUN";
         public string? ErrorMessage { get; set; }
         public string? ErrorHResult { get; set; }
@@ -398,6 +686,10 @@ internal static class Program
         public string? DxgiDeviceQiHr { get; set; }
         public string? CreateDirect3DDeviceHr { get; set; }
 
+        // Adapter
+        public string? AdapterName { get; set; }
+        public string? AdapterLuid { get; set; }
+
         // Capture
         public int CaptureItemWidth { get; set; }
         public int CaptureItemHeight { get; set; }
@@ -406,7 +698,23 @@ internal static class Program
         public int FrameWidth { get; set; }
         public int FrameHeight { get; set; }
         public int CallbackThreadId { get; set; }
-        public int MainThreadId { get; set; }
-        public long FrameArrivedTicks { get; set; }
+
+        // Surface interop
+        public bool AsInteropSuccess { get; set; }
+        public string? GetInterfaceHr { get; set; }
+
+        // Texture
+        public int TextureWidth { get; set; }
+        public int TextureHeight { get; set; }
+        public string? TextureFormat { get; set; }
+        public int TextureMipLevels { get; set; }
+        public int TextureArraySize { get; set; }
+
+        // Readback
+        public bool MapSuccess { get; set; }
+
+        // BMP
+        public bool BmpExists { get; set; }
+        public long BmpSize { get; set; }
     }
 }
