@@ -323,7 +323,7 @@ TargetFramework: net10.0-windows10.0.26100.0
 Architecture: x64
 CsWin32 version: 0.3.298
 CsWinRT / Windows SDK projection package and version: SDK projection (built-in)
-WPF hardware rendering tier: [fill in — run: [System.Windows.Media.RenderCapability.Tier]]
+WPF hardware rendering tier: 0x00020000 (Tier 2, full hardware acceleration)
 Remote Desktop: ToDesk virtual display adapter detected; not used during test
 HDR: Yes, enabled (BT2020, 480 nits peak)
 Display refresh rate(s): 2560x1600 @ 240Hz (native 60Hz)
