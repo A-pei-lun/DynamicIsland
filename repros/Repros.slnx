@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="WinGCSurfaceInterop/WinGCSurfaceInterop.csproj" />
+  <Project Path="D3D11D3D9D3DImage/D3D11D3D9D3DImage.csproj" />
+  <Project Path="WpfCompositionBackdrop/WpfCompositionBackdrop.csproj" />
+</Solution>
