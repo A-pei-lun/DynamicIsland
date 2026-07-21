@@ -315,27 +315,27 @@ G1/G2 未通过时，不进入自定义 GaussianBlur effect interop。
 请把以下模板填满；`net10.0-windows10.0.26100.0` 是目标框架，不等于实机 OS build。
 
 ```text
-OS edition:
-OS version (winver full build, e.g. 26100.xxxx):
-Windows SDK version:
-.NET runtime version:
-TargetFramework:
+OS edition: Windows 11 Home Chinese Edition
+OS version (winver full build, e.g. 26100.xxxx): 26100.8894 (26200)
+Windows SDK version: 10.0.26100.0
+.NET runtime version: 10.0.302
+TargetFramework: net10.0-windows10.0.26100.0
 Architecture: x64
-CsWin32 version:
-CsWinRT / Windows SDK projection package and version:
-WPF hardware rendering tier:
-Remote Desktop: yes/no
-HDR: yes/no
-Display refresh rate(s):
+CsWin32 version: 0.3.298
+CsWinRT / Windows SDK projection package and version: SDK projection (built-in)
+WPF hardware rendering tier: [fill in — run: [System.Windows.Media.RenderCapability.Tier]]
+Remote Desktop: ToDesk virtual display adapter detected; not used during test
+HDR: Yes, enabled (BT2020, 480 nits peak)
+Display refresh rate(s): 2560x1600 @ 240Hz (native 60Hz)
 
-D3D11 adapter name:
-D3D11 adapter LUID:
-D3D11 feature level:
-D3D11 debug layer enabled: yes/no
-GPU driver version:
+D3D11 adapter name: NVIDIA GeForce RTX 4070 Laptop GPU
+D3D11 adapter LUID: [fill in]
+D3D11 feature level: 12_2
+D3D11 debug layer enabled: No (retail)
+GPU driver version: 32.0.16.1074 (WDDM 3.2, 2026-07-02)
 
-D3D9Ex adapter ordinal/name:
-D3D9Ex adapter LUID or mapping evidence:
+D3D9Ex adapter ordinal/name: [fill in]
+D3D9Ex adapter LUID or mapping evidence: [fill in]
 ```
 
 WinGC surface 探针：
@@ -403,9 +403,9 @@ However, the Microsoft example on the `IDirect3DSurface` page is C++/WinRT. I ha
 Observed result:
 
 ```text
-OS build: [fill in]
-.NET runtime: [fill in]
-Windows SDK/projection version: [fill in]
+OS build: 26100.8894
+.NET runtime: 10.0.302
+Windows SDK/projection version: 10.0.26100.0
 CsWin32: 0.3.298
 frame.Surface runtime type: [fill in]
 surface is IWinRTObject: [fill in]
@@ -454,14 +454,14 @@ D3D11 producer
 Environment and resource descriptions:
 
 ```text
-OS build: [fill in]
-GPU/driver: [fill in]
-D3D11 adapter LUID: [fill in]
-D3D9Ex adapter: [fill in]
-Texture creator: [D3D9Ex or D3D11]
-D3D11 texture desc: [fill in]
-D3D9 surface desc: [fill in]
-D3DImage.IsFrontBufferAvailable: [fill in]
+OS build: 26100.8894
+GPU/driver: NVIDIA GeForce RTX 4070 Laptop GPU / 32.0.16.1074 (WDDM 3.2)
+D3D11 adapter LUID: [fill in — run minimal repro B]
+D3D9Ex adapter: [fill in — run minimal repro B]
+Texture creator: [D3D9Ex or D3D11 — to be determined]
+D3D11 texture desc: [fill in — run minimal repro B]
+D3D9 surface desc: [fill in — run minimal repro B]
+D3DImage.IsFrontBufferAvailable: [fill in — run minimal repro B]
 ```
 
 Minimal reproduction: [link]
@@ -497,7 +497,7 @@ Community implementations often combine `CreateHostBackdropBrush` with `SetWindo
 
 Questions:
 
-1. As of Windows 11 build [fill in], is there a supported Win32/WPF way to obtain a host-backdrop brush without private accent states?
+1. As of Windows 11 build 26100, is there a supported Win32/WPF way to obtain a host-backdrop brush without private accent states?
 2. Is attaching a `DesktopWindowTarget` to the same top-level HWND used by WPF supported when WPF controls must render above the Composition visual?
 3. If no such API is supported, is the documented alternative limited to system-controlled backdrops without a custom blur radius?
 
