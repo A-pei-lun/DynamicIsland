@@ -49,10 +49,28 @@ dotnet run --project .\repros\D3D11D3D9D3DImage\D3D11D3D9D3DImage.csproj -c Rele
 | 检查项 | 结果 |
 |---|---|
 | M3（D3D9Ex 本地 → D3DImage） | **PASS** — 12/12 色块同步，无黑屏无错色 |
-| M4（共享 + D3D11 Query） | **PASS** — LUID 匹配、Query 12/12 0ms、回读 11/12 正确 |
-| D3D9 LUID | 0x00011ECB:0x00000000 |
-| D3D11 LUID | 0x00011ECB:0x00000000 |
-| 回读 1 次偏差 | 已知 D3D9/D3D11 同步边界，不影响显示 |
+| M4 visual presentation | **PASS** — 12/12，用户三次目视均正常，无黑屏无错色 |
+| M4 strict automated readback validation | **FAIL** — 见下节已知限制 |
+
+## 已知限制 / Known limitation
+
+当前 Repro 的 legacy D3D9Ex ↔ D3D11 shared-resource 路径中，D3D11 event query 完成后立即执行的 D3D9-side staging readback 未表现出稳定的逐帧可见性。
+
+三次实测中，用户视觉显示均为 12/12，但即时自动 readback 结果为：
+
+| 测试 | 自动 readback | 环境 |
+|---|---|---|
+| 原始正式运行 | 11/12 | 2026-07-21，`repro/windows-graphics-interop` |
+| 后续重测 #1 | 10/12 (artifact overwritten, unavailable) | 2026-07-22，`fix/m4-verdict-consistency` |
+| 后续重测 #2 | 9/12 | 2026-07-22，`fix/m4-verdict-consistency` |
+
+因此，本 Repro **不将 `D3D11_QUERY_EVENT` 视为已经证明足以提供该 legacy 跨 API shared-resource 路径的严格同步/可见性保证**。
+
+注意：
+- 屏幕视觉正常 **不等于** 严格同步已经证明；
+- 此结果 **不自动证明** Windows 或驱动存在 bug；
+- exact underlying cause has **not been isolated**；
+- 不得把"D3D11 写入尚未完全提交"写成已经证明的唯一根因。
 
 ## 环境
 
@@ -65,6 +83,8 @@ dotnet run --project .\repros\D3D11D3D9D3DImage\D3D11D3D9D3DImage.csproj -c Rele
 
 ## 结果文件
 
-- `repros/artifacts/B-D3D9D3DImage/baseline.log` — 完整日志
-- `repros/artifacts/B-D3D9D3DImage/result.json` — 结构化结果
-- `repros/evidence/2026-07-21-ec73bd81/B-D3D9D3DImage/` — 归档证据
+- `repros/artifacts/B-D3D9D3DImage/baseline.log` — 完整日志（最新运行）
+- `repros/artifacts/B-D3D9D3DImage/result.json` — 结构化结果（最新运行）
+- `repros/evidence/2026-07-21-ec73bd81/B-D3D9D3DImage/` — 原始正式运行归档证据（11/12）
+- Retest #1（10/12）— 仅有观察记录，原始产物已被后续运行覆盖，不可恢复
+- `repros/evidence/2026-07-22-fix-m4/retest-02/` — 审计重测 #2 归档证据（9/12，已脱敏）

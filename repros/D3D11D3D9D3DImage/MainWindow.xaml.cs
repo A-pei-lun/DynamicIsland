@@ -94,6 +94,15 @@ public partial class MainWindow : Window
     bool _allCompleted;
     bool _earlyClose;
 
+    // ─── M4 审计跟踪 ─────────────────────────────────────────────────────
+    bool _luidMatched;
+    int _queriesCompleted;
+    int _queriesTotal;
+    int _readbackPassed;
+    int _readbackTotal;
+    int _readbackMismatches => _readbackTotal - _readbackPassed;
+    bool? _isFrontBufferAvailable;
+
     // ─── 计时器 ───────────────────────────────────────────────────────────
     System.Windows.Threading.DispatcherTimer? _timer;
 
@@ -165,6 +174,7 @@ public partial class MainWindow : Window
             // ── 3. D3DImage ──────────────────────────────────────────
             Status("[3/4] 设置 D3DImage...");
             _d3dImage = new D3DImage();
+            _isFrontBufferAvailable = _d3dImage.IsFrontBufferAvailable;
             _d3dImage.IsFrontBufferAvailableChanged += OnFrontBufferChanged;
             SetBackBufferSafe();
             D3DImageHost.Source = _d3dImage;
@@ -354,10 +364,10 @@ public partial class MainWindow : Window
             DXGI_ADAPTER_DESC1 desc1 = adapter1.GetDesc1();
             Log($"  D3D11 AdapterLUID=0x{desc1.AdapterLuid.LowPart:X8}:0x{desc1.AdapterLuid.HighPart:X8}");
 
-            bool match = luid9.LowPart == desc1.AdapterLuid.LowPart
-                      && luid9.HighPart == desc1.AdapterLuid.HighPart;
-            Log($"  LUID 匹配: {(match ? "✓" : "✗ 不匹配 — BLOCKED")}");
-            return match;
+            _luidMatched = luid9.LowPart == desc1.AdapterLuid.LowPart
+                        && luid9.HighPart == desc1.AdapterLuid.HighPart;
+            Log($"  LUID 匹配: {(_luidMatched ? "✓" : "✗ 不匹配 — BLOCKED")}");
+            return _luidMatched;
         }
         finally
         {
@@ -426,12 +436,14 @@ public partial class MainWindow : Window
                         _ctx11.GetData(_query11, null, 0, 0);
                         sw.Stop();
                         Log($"  Query GetData OK, {sw.ElapsedMilliseconds}ms");
+                        _queriesCompleted++;
                     }
                     catch (Exception exGet)
                     {
                         sw.Stop();
                         Log($"  Query GetData 异常: {exGet.Message}, {sw.ElapsedMilliseconds}ms");
                     }
+                    _queriesTotal++;
                 }
 
                 // Flush
@@ -467,6 +479,7 @@ public partial class MainWindow : Window
     // ─── D3D9 staging 回读 ──────────────────────────────────────────────
     unsafe void ReadbackPixel(byte expB, byte expG, byte expR, byte expA)
     {
+        _readbackTotal++;
         try
         {
             _dev9!.GetRenderTargetData(_surf9!, _staging9!);
@@ -482,6 +495,7 @@ public partial class MainWindow : Window
             byte a = p[cy * lr.Pitch + cx * 4 + 3];
 
             bool ok = (b == expB && g == expG && r == expR && a == expA);
+            if (ok) _readbackPassed++;
             Log($"  Readback center({cx},{cy}): B={b:X2} G={g:X2} R={r:X2} A={a:X2} " +
                 $"(expect B={expB:X2} G={expG:X2} R={expR:X2} A={expA:X2}) {(ok ? "✓" : "✗")}");
 
@@ -498,6 +512,7 @@ public partial class MainWindow : Window
     // ══════════════════════════════════════════════════════════════════════
     void OnFrontBufferChanged(object? sender, DependencyPropertyChangedEventArgs e)
     {
+        _isFrontBufferAvailable = (bool)e.NewValue;
         Log($"IsFrontBufferAvailableChanged: old={e.OldValue}, new={e.NewValue}");
         if (_d3dImage != null && _d3dImage.IsFrontBufferAvailable)
             Dispatcher.BeginInvoke(() => SetBackBufferSafe());
@@ -637,6 +652,9 @@ public partial class MainWindow : Window
 
         string verdict;
         string? errorMsg = null;
+
+        bool isM4 = _mode == RunMode.D3D11Query;
+
         if (_mode == RunMode.FlushOnly)
         {
             verdict = "INCONCLUSIVE";
@@ -647,26 +665,56 @@ public partial class MainWindow : Window
             verdict = "INCONCLUSIVE";
             errorMsg = $"提前关闭，仅完成 {_completedCount}/{TotalColors} 次";
         }
-        else if (_allCompleted)
-        {
-            verdict = "PASS";
-        }
         else if (_currentIndex < 0)
         {
             verdict = "FAIL";
             errorMsg = "初始化失败";
         }
-        else
+        else if (!_allCompleted)
         {
             verdict = "FAIL";
             errorMsg = $"未完成全部 12 次 ({_completedCount}/{TotalColors})";
+        }
+        else if (isM4 && !_luidMatched)
+        {
+            verdict = "FAIL";
+            errorMsg = "LUID 不匹配";
+        }
+        else if (isM4 && _sharedHandle.Value == null)
+        {
+            verdict = "FAIL";
+            errorMsg = "共享 handle 无效";
+        }
+        else if (isM4 && _tex11 == null)
+        {
+            verdict = "FAIL";
+            errorMsg = "OpenSharedResource 失败";
+        }
+        else if (isM4 && (_query11 == null || _queriesTotal != TotalColors || _queriesCompleted != TotalColors))
+        {
+            verdict = "FAIL";
+            errorMsg = $"Query 未完成: {_queriesCompleted}/{_queriesTotal}";
+        }
+        else if (isM4 && (_staging9 == null || _readbackTotal != TotalColors || _readbackPassed != TotalColors))
+        {
+            verdict = "FAIL";
+            errorMsg = $"Readback mismatch: {_readbackPassed}/{_readbackTotal}";
+        }
+        else if (isM4 && _isFrontBufferAvailable != true)
+        {
+            verdict = "FAIL";
+            errorMsg = $"IsFrontBufferAvailable 异常: {_isFrontBufferAvailable}";
+        }
+        else
+        {
+            verdict = "PASS";
         }
 
         var result = new
         {
             Stage = _mode == RunMode.D3D9Local ? "M3" : "M4",
             Mode = _mode.ToString(),
-            Status = verdict,
+            Verdict = verdict,
             ErrorMessage = errorMsg,
             ColorsCompleted = _completedCount,
             TotalColors,
@@ -682,6 +730,12 @@ public partial class MainWindow : Window
             OpenSharedResourceOk = _tex11 != null,
             RtvCreated = _rtv11 != null,
             QueryCreated = _query11 != null,
+            QueriesCompleted = _queriesCompleted,
+            QueriesTotal = _queriesTotal,
+            ReadbackPassed = _readbackPassed,
+            ReadbackTotal = _readbackTotal,
+            ReadbackMismatches = _readbackMismatches,
+            IsFrontBufferAvailable = _isFrontBufferAvailable,
         };
 
         var json = System.Text.Json.JsonSerializer.Serialize(result,

@@ -8,7 +8,7 @@
 | 目录 | 目标 | 依赖 | 结果 |
 |---|---|---|---|
 | `WinGCSurfaceInterop/` | WinGC `Direct3D11CaptureFrame.Surface` → `ID3D11Texture2D` ABI 路径 | WinRT, D3D11, CsWinRT, CsWin32 | **M1+M2 PASS** ✅ |
-| `D3D11D3D9D3DImage/` | D3D11 → D3D9Ex 共享纹理 → WPF D3DImage 稳定显示 | D3D11, D3D9Ex, WPF | **M3 PASS, M4 PASS** ✅ |
+| `D3D11D3D9D3DImage/` | D3D11 → D3D9Ex 共享纹理 → WPF D3DImage 稳定显示 | D3D11, D3D9Ex, WPF | **M3 PASS** ✅; **M4 visual PASS, strict validation FAIL** |
 | `WpfCompositionBackdrop/` | WPF 窗口 + Windows Composition SpriteVisual + Backdrop/HostBackdrop | WPF, Comp, CsWin32 | **M5-C** 🟡（DispatcherQueue 边界） |
 
 ## 判读表
