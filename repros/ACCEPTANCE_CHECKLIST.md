@@ -19,7 +19,7 @@
 | M1 | PASS | 2026-07-21 | Frame received in 41ms, Surface != null, callback on thread pool thread |
 | M2 | PASS | 2026-07-21 | As<TInterop> + GetInterface + staging + Map + BMP all OK, BMP 2560x1600 visual confirmed |
 | M3 | PASS | 2026-07-21 | 自动 PASS + 用户确认 12/12 色块同步、无黑屏无错色 |
-| M4 | PASS | 2026-07-21 | LUID 匹配、共享打开、12 次 Query 0ms、Readback 11/12（D3D9/D3D11 同步边界）、用户视觉确认一切正常 |
+| M4 | visual PASS, strict validation FAIL | 2026-07-21~22 | Visual 12/12 ✅；自动 readback 不稳定：原始 11/12，重测#1 10/12（产物丢失），重测#2 9/12 |
 | M5 | M5-C | 2026-07-21 | WPF 内容正常，红色不可见。DispatcherQueue 创建成功但 Compositor 构造函数无法识别（SDK 投影边界）。三种方案均无效。不进入 M6 |
 | M6 | NOT RUN | — | — |
 | M7 | PASS | 2026-07-21 | 发布整理完成：README、LICENSE、证据归档、调查报告更新。用户确认允许发布 |
@@ -89,12 +89,16 @@
 | CreateRenderTargetView | 成功 |
 | CreateQuery(D3D11_QUERY_EVENT) | 成功 |
 | 12 次 Query GetData | 全部 0ms 完成 |
-| D3D9 staging readback | 11/12 正确（1 次偏差：D3D9/D3D11 同步边界） |
+| D3D9 staging readback（原始） | 11/12 — 存在同步边界 |
+| D3D9 staging readback（重测 #1） | 10/12（原始产物已被覆盖，不可恢复） |
+| D3D9 staging readback（重测 #2） | 9/12 |
 | D3DImage.SetBackBuffer | 成功 |
 | WPF rendering tier | 2 |
 | 颜色序列 12/12 | 全部完成 |
 | 用户视觉确认 | 一切正常 |
-| 最终判定 | PASS |
+| Strict automated verdict（新逻辑） | **FAIL** — readback mismatch > 0 |
+| Visual presentation | **PASS** — 12/12 ✅ |
+| 最终判定（严格验收标准） | **FAIL** — 自动 readback 不满足原始严格门禁 |
 
 ### M7
 
@@ -107,7 +111,7 @@
 | 许可证 | 根目录 MIT LICENSE，Copyright (c) 2026 A-pei-lun |
 | 证据归档 | `repros/evidence/2026-07-21-ec73bd81/`（已脱敏） |
 | 调查报告更新 | `docs/WINDOWS_GRAPHICS_INTEROP_GREY_AREAS.md` 占位符已清除 |
-| `DynamicIsland.slnx -c Release` | 0 errors, 2 warnings（既有 CS9191） |
-| `Repros.slnx -c Release` | 0 errors, 6 warnings（既有：CS9191 × 5、CS9123 × 1） |
+| `DynamicIsland.slnx -c Release` | 0 errors; 2 unique CS9191 warning sites, emitted as 4 warning lines (temp WPF project duplicates) |
+| `Repros.slnx -c Release` | 0 errors; 6 warning lines: CS9191 × 5 and CS9123 × 1 |
 | 用户决定 | 允许发布 ✅ |
 | 最终判定 | PASS |
