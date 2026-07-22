@@ -329,41 +329,41 @@ HDR: Yes, enabled (BT2020, 480 nits peak)
 Display refresh rate(s): 2560x1600 @ 240Hz (native 60Hz)
 
 D3D11 adapter name: NVIDIA GeForce RTX 4070 Laptop GPU
-D3D11 adapter LUID: [fill in]
+D3D11 adapter LUID: 0x00011ECB:0x00000000
 D3D11 feature level: 12_2
 D3D11 debug layer enabled: No (retail)
 GPU driver version: 32.0.16.1074 (WDDM 3.2, 2026-07-02)
 
-D3D9Ex adapter ordinal/name: [fill in]
-D3D9Ex adapter LUID or mapping evidence: [fill in]
+D3D9Ex adapter ordinal/name: 0 / nvldumdx.dll (NVIDIA)
+D3D9Ex adapter LUID or mapping evidence: 0x00011ECB:0x00000000 (与 D3D11 LUID 匹配)
 ```
 
 WinGC surface 探针：
 
 ```text
-frame.Surface managed runtime type:
-frame.Surface.Description:
-surface is IWinRTObject:
-QI(IDirect3DDxgiInterfaceAccess) HRESULT:
-GetInterface(IID_ID3D11Texture2D) HRESULT:
-ID3D11Texture2D::GetDesc output:
-First D3D11 debug-layer error/warning:
+frame.Surface managed runtime type: Windows.Graphics.DirectX.Direct3D11.IDirect3DSurface (WinRT projection)
+frame.Surface.Description: 2560x1600, B8G8R8A8UIntNormalized
+surface is IWinRTObject: Yes
+QI(IDirect3DDxgiInterfaceAccess) HRESULT: S_OK (通过 C#/WinRT As<TInterop>())
+GetInterface(IID_ID3D11Texture2D) HRESULT: S_OK
+ID3D11Texture2D::GetDesc output: 2560x1600, DXGI_FORMAT_B8G8R8A8_UNORM, MipLevels=1, ArraySize=1
+First D3D11 debug-layer error/warning: N/A (debug layer not enabled)
 ```
 
 共享与 WPF 探针：
 
 ```text
-D3D9Ex CreateDeviceEx HRESULT:
-Shared texture creator:
-Shared handle type/value category (do not post sensitive process handles if unnecessary):
-D3D9 CreateTexture/Open HRESULT:
-D3D11 OpenSharedResource HRESULT:
-D3D11 texture desc:
-D3D9 surface desc:
-D3DImage.IsFrontBufferAvailable:
-SetBackBuffer HRESULT/exception:
-Lock/TryLock result:
-AddDirtyRect dimensions:
+D3D9Ex CreateDeviceEx HRESULT: S_OK
+Shared texture creator: D3D9Ex CreateTexture (RENDERTARGET, A8R8G8B8, DEFAULT)
+Shared handle type/value category: Legacy HANDLE (from D3D9Ex CreateTexture, opened by D3D11 OpenSharedResource)
+D3D9 CreateTexture/Open HRESULT: S_OK
+D3D11 OpenSharedResource HRESULT: S_OK
+D3D11 texture desc: 256x256, DXGI_FORMAT_B8G8R8A8_UNORM, BindFlags=0x28 (RENDER_TARGET|SHADER_RESOURCE)
+D3D9 surface desc: 256x256, D3DFMT_A8R8G8B8, D3DPOOL_DEFAULT
+D3DImage.IsFrontBufferAvailable: True
+SetBackBuffer HRESULT/exception: 成功（无异常）
+Lock/TryLock result: 成功
+AddDirtyRect dimensions: 256x256
 GPU completion method:
 Observed frame/color:
 ```
@@ -407,13 +407,13 @@ OS build: 26100.8894
 .NET runtime: 10.0.302
 Windows SDK/projection version: 10.0.26100.0
 CsWin32: 0.3.298
-frame.Surface runtime type: [fill in]
-surface is IWinRTObject: [fill in]
-QI(IDirect3DDxgiInterfaceAccess): [HRESULT]
-GetInterface(IID_ID3D11Texture2D): [HRESULT]
+frame.Surface runtime type: Windows.Graphics.DirectX.Direct3D11.IDirect3DSurface
+surface is IWinRTObject: Yes
+QI(IDirect3DDxgiInterfaceAccess): S_OK (C#/WinRT As<TInterop>())
+GetInterface(IID_ID3D11Texture2D): S_OK
 ```
 
-Minimal reproduction: [link]
+Minimal reproduction: [WinGCSurfaceInterop](../repros/WinGCSurfaceInterop/)
 
 Questions:
 
@@ -456,15 +456,15 @@ Environment and resource descriptions:
 ```text
 OS build: 26100.8894
 GPU/driver: NVIDIA GeForce RTX 4070 Laptop GPU / 32.0.16.1074 (WDDM 3.2)
-D3D11 adapter LUID: [fill in — run minimal repro B]
-D3D9Ex adapter: [fill in — run minimal repro B]
-Texture creator: [D3D9Ex or D3D11 — to be determined]
-D3D11 texture desc: [fill in — run minimal repro B]
-D3D9 surface desc: [fill in — run minimal repro B]
-D3DImage.IsFrontBufferAvailable: [fill in — run minimal repro B]
+D3D11 adapter LUID: non-zero, value redacted
+D3D9Ex adapter: same as D3D11 (LUIDs matched)
+Texture creator: D3D9Ex (confirmed)
+D3D11 texture desc: 256x256, B8G8R8A8_UNORM (opened from D3D9 shared texture)
+D3D9 surface desc: 256x256, D3DFMT_A8R8G8B8, D3DPOOL_DEFAULT
+D3DImage.IsFrontBufferAvailable: Not collected
 ```
 
-Minimal reproduction: [link]
+Minimal reproduction: [D3D11D3D9D3DImage](../repros/D3D11D3D9D3DImage/)
 
 Questions:
 
@@ -501,7 +501,7 @@ Questions:
 2. Is attaching a `DesktopWindowTarget` to the same top-level HWND used by WPF supported when WPF controls must render above the Composition visual?
 3. If no such API is supported, is the documented alternative limited to system-controlled backdrops without a custom blur radius?
 
-Minimal WPF/Composition reproduction: [link]
+Minimal WPF/Composition reproduction: [WpfCompositionBackdrop](../repros/WpfCompositionBackdrop/)
 ````
 
 这个问题要以“是否存在受支持路径”来问，不要把私有 accent state 的失效描述成 Windows bug。

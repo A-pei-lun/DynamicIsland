@@ -1,0 +1,10 @@
+{
+  "Stage": "M5",
+  "Mode": "red-visual",
+  "Status": "PASS",
+  "DispatcherQueueCreated": true,
+  "CompositorCreated": false,
+  "DesktopWindowTargetCreated": false,
+  "SpriteVisualCreated": false,
+  "RootSet": false
+}

@@ -1,0 +1,16 @@
+[17:06:58.789] 初始化...
+[17:06:58.793] [1/5] 获取窗口 HWND...
+[17:06:58.793]   HWND = non-zero, value redacted
+[17:06:58.793] [1/5] HWND ✓
+[17:06:58.793] [2/5] DispatcherQueue...
+[17:06:58.794]   CreateDispatcherQueueController hr=0x00000000
+[17:06:58.805]   DispatcherQueue from controller = OK
+[17:06:58.805] [2/5] DispatcherQueue ✓
+[17:06:58.805] [3/5] 创建 Compositor...
+[17:06:58.811] 初始化异常: UnauthorizedAccessException: 拒绝访问。
+
+The caller must initialize DispatcherQueue on this thread before this operation.
+[17:06:58.811]   HResult=0x80070005
+[17:06:58.811] 失败: UnauthorizedAccessException: 拒绝访问。
+
+The caller must initialize DispatcherQueue on this thread before this operation.
