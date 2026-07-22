@@ -42,7 +42,7 @@ dotnet run --project .\repros\D3D11D3D9D3DImage\D3D11D3D9D3DImage.csproj -c Rele
 ## 预期
 
 - M3：12 次色块无黑屏、无错色，与文字同步
-- M4：LUID 匹配、共享打开成功、12 次 Query 超时内完成
+- M4：LUID 匹配、共享打开成功、12 次 Query 超时内完成、回读像素 12/12 正确
 
 ## 实际结果
 

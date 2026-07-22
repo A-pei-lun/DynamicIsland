@@ -690,15 +690,20 @@ public partial class MainWindow : Window
             verdict = "FAIL";
             errorMsg = "OpenSharedResource 失败";
         }
-        else if (isM4 && _readbackMismatches > 0)
+        else if (isM4 && (_query11 == null || _queriesTotal != TotalColors || _queriesCompleted != TotalColors))
         {
             verdict = "FAIL";
-            errorMsg = $"Readback mismatch: {_readbackMismatches}/{_readbackTotal}";
+            errorMsg = $"Query 未完成: {_queriesCompleted}/{_queriesTotal}";
         }
-        else if (isM4 && _isFrontBufferAvailable == false)
+        else if (isM4 && (_staging9 == null || _readbackTotal != TotalColors || _readbackPassed != TotalColors))
         {
             verdict = "FAIL";
-            errorMsg = "IsFrontBufferAvailable 不可用";
+            errorMsg = $"Readback mismatch: {_readbackPassed}/{_readbackTotal}";
+        }
+        else if (isM4 && _isFrontBufferAvailable != true)
+        {
+            verdict = "FAIL";
+            errorMsg = $"IsFrontBufferAvailable 异常: {_isFrontBufferAvailable}";
         }
         else
         {
